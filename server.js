@@ -125,7 +125,7 @@ app.use('/api/', apiLimiter);
 app.use('/api/auth', authLimiter);
 
 // ==========================================
-// STATIC FILES
+// STATIC FILES & ADMIN PAGES
 // ==========================================
 
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets'), {
@@ -133,13 +133,40 @@ app.use('/assets', express.static(path.join(__dirname, 'public', 'assets'), {
     etag: true
 }));
 
-app.use('/admin', express.static(path.join(__dirname, 'public'), {
-    index: 'admin.html'
-}));
+// Serve static files (JS, CSS, etc.)
+app.use('/static', express.static(path.join(__dirname, 'public')));
 
-app.use('/dashboard', express.static(path.join(__dirname, 'public'), {
-    index: 'dashboard-live.html'
-}));
+// Clean URL routes for all admin pages
+const adminPages = {
+    '/admin': 'admin.html',
+    '/dashboard': 'dashboard-live.html',
+    '/orders': 'orders.html',
+    '/shipments': 'shipments.html',
+    '/create-shipment': 'create-shipment.html',
+    '/tracking-admin': 'tracking.html',
+    '/returns-admin': 'returns.html',
+    '/inventory': 'inventory.html',
+    '/warehouses': 'warehouses.html',
+    '/carriers': 'carrier-selection.html',
+    '/international': 'international.html',
+    '/integrations': 'integrations.html',
+    '/reports': 'reports.html',
+    '/qos': 'qos.html',
+    '/batch-jobs': 'batch-jobs.html',
+    '/settings': 'settings.html',
+    '/support': 'support.html',
+    '/support-chat': 'support-chat.html',
+    '/api-playground': 'api-playground.html',
+    '/playground': 'playground.html',
+    '/docs': 'docs/index.html'
+};
+
+// Register routes for all admin pages
+Object.entries(adminPages).forEach(([route, file]) => {
+    app.get(route, (req, res) => {
+        res.sendFile(path.join(__dirname, 'public', file));
+    });
+});
 
 // ==========================================
 // AUTHENTICATION MIDDLEWARE
