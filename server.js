@@ -11,6 +11,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const { engine } = require('express-handlebars');
 
 // Import routes
 const trackingRoutes = require('./api-routes');
@@ -27,6 +28,14 @@ if (process.env.SHOPIFY_API_KEY && process.env.SHOPIFY_API_SECRET) {
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Configure Handlebars template engine
+app.engine('hbs', engine({
+    extname: '.hbs',
+    defaultLayout: false
+}));
+app.set('view engine', 'hbs');
+app.set('views', path.join(__dirname, 'templates'));
 
 // ============================================
 // MIDDLEWARE
@@ -105,17 +114,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.json({
-        name: 'Routz Tracking & Returns Platform',
-        version: require('./package.json').version,
-        documentation: '/docs',
-        endpoints: {
-            tracking: '/t/:trackingNumber',
-            returns: '/returns/:orgId',
-            api: '/api',
-            widget: '/widget'
-        }
-    });
+    res.render('index');
 });
 
 // ============================================
