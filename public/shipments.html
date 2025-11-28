@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Expéditions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .slide-in { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useMemo } = React;
+
+        // ==========================================
+        // API SERVICE
+        // ==========================================
+        const API_BASE = '/api/v1';
+        const getAuthHeader = () => ({ 'Authorization': `Bearer ${localStorage.getItem('routz_token') || 'demo-token'}` });
+
+        const apiService = {
+            async getShipments(params = {}) {
+                const query = new URLSearchParams(params).toString();
+                const response = await fetch(`${API_BASE}/shipments?${query}`, { headers: getAuthHeader() });
+                if (!response.ok) throw new Error('Failed to fetch shipments');
+                return response.json();
+            },
+
+            async getShipment(id) {
+                const response = await fetch(`${API_BASE}/shipments/${id}`, { headers: getAuthHeader() });
+                if (!response.ok) throw new Error('Failed to fetch shipment');
+                return response.json();
+            },
+
+            async createShipment(data) {
+                const response = await fetch(`${API_BASE}/shipments`, {
+                    method: 'POST',
+                    headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to create shipment');
+                }
+                return response.json();
+            },
+
+            async cancelShipment(id) {
+                const response = await fetch(`${API_BASE}/shipments/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeader()
+                });
+                if (!response.ok) throw new Error('Failed to cancel shipment');
+                return response.json();
+            },
+
+            async getCarriers() {
+                const response = await fetch(`${API_BASE}/carriers`, { headers: getAuthHeader() });
+                if (!response.ok) throw new Error('Failed to fetch carriers');
+                return response.json();
+            },
+
+            async getRates(data) {
+                const response = await fetch(`${API_BASE}/carriers/rates`, {
+                    method: 'POST',
+                    headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error('Failed to get rates');
+                return response.json();
+            },
+
+            async getTracking(trackingNumber) {
+                const response = await fetch(`${API_BASE}/tracking/${trackingNumber}`, { headers: getAuthHeader() });
+                if (!response.ok) throw new Error('Failed to fetch tracking');
+                return response.json();
+            }
+        };
+
+        // ==========================================
+        // MOCK DATA (pour démo sans backend)
+        // ==========================================
+        const mockShipments = [
+            { id: 'SHP-001', tracking_number: '6L123456789FR', carrier: 'colissimo', service: 'standard', status: 'in_transit', recipient_name: 'Marie Dupont', recipient_city: 'Lyon', recipient_postal_code: '69001', created_at: '2024-01-15T10:30:00Z', total_weight: 2.5 },
+            { id: 'SHP-002', tracking_number: 'XY987654321FR', carrier: 'chronopost', service: 'express', status: 'delivered', recipient_name: 'Jean Martin', recipient_city: 'Paris', recipient_postal_code: '75001', created_at: '2024-01-14T14:20:00Z', total_weight: 1.2, delivered_at: '2024-01-15T09:00:00Z' },
+            { id: 'SHP-003', tracking_number: 'MR456789123', carrier: 'mondial_relay', service: 'standard', status: 'pending', recipient_name: 'Sophie Bernard', recipient_city: 'Marseille', recipient_postal_code: '13001', created_at: '2024-01-15T08:00:00Z', total_weight: 3.8 },
+            { id: 'SHP-004', tracking_number: 'JJD123456789', carrier: 'dhl', service: 'express', status: 'in_transit', recipient_name: 'Pierre Durand', recipient_city: 'Bordeaux', recipient_postal_code: '33000', created_at: '2024-01-14T16:45:00Z', total_weight: 0.8 },
+            { id: 'SHP-005', tracking_number: '6L987654321FR', carrier: 'colissimo', service: 'expert', status: 'exception', recipient_name: 'Emma Rousseau', recipient_city: 'Toulouse', recipient_postal_code: '31000', created_at: '2024-01-13T11:15:00Z', total_weight: 5.2 },
+            { id: 'SHP-006', tracking_number: '1ZABC123456', carrier: 'ups', service: 'standard', status: 'delivered', recipient_name: 'Lucas Petit', recipient_city: 'Nice', recipient_postal_code: '06000', created_at: '2024-01-12T09:30:00Z', total_weight: 1.5, delivered_at: '2024-01-14T14:30:00Z' },
+            { id: 'SHP-007', tracking_number: '7123456789012', carrier: 'fedex', service: 'priority', status: 'in_transit', recipient_name: 'Camille Leroy', recipient_city: 'Nantes', recipient_postal_code: '44000', created_at: '2024-01-15T07:00:00Z', total_weight: 2.1 },
+            { id: 'SHP-008', tracking_number: 'GLS987654321', carrier: 'gls', service: 'standard', status: 'pending', recipient_name: 'Hugo Moreau', recipient_city: 'Strasbourg', recipient_postal_code: '67000', created_at: '2024-01-15T11:00:00Z', total_weight: 4.3 },
+        ];
+
+        const mockCarriers = [
+            { id: 'colissimo', name: 'Colissimo', services: [{ id: 'standard', name: 'Standard', estimatedDays: 3 }, { id: 'expert', name: 'Expert', estimatedDays: 2 }] },
+            { id: 'chronopost', name: 'Chronopost', services: [{ id: 'express', name: 'Chrono 13', estimatedDays: 1 }, { id: 'classic', name: 'Classic', estimatedDays: 2 }] },
+            { id: 'mondial_relay', name: 'Mondial Relay', services: [{ id: 'standard', name: 'Point Relais', estimatedDays: 4 }] },
+            { id: 'dhl', name: 'DHL Express', services: [{ id: 'express', name: 'Express', estimatedDays: 2 }, { id: 'economy', name: 'Economy', estimatedDays: 5 }] },
+            { id: 'ups', name: 'UPS', services: [{ id: 'express', name: 'Express', estimatedDays: 2 }, { id: 'standard', name: 'Standard', estimatedDays: 4 }] },
+            { id: 'fedex', name: 'FedEx', services: [{ id: 'priority', name: 'Priority', estimatedDays: 2 }, { id: 'economy', name: 'Economy', estimatedDays: 5 }] },
+            { id: 'gls', name: 'GLS', services: [{ id: 'standard', name: 'Business', estimatedDays: 3 }] },
+            { id: 'dpd', name: 'DPD', services: [{ id: 'classic', name: 'Classic', estimatedDays: 3 }, { id: 'express', name: 'Express', estimatedDays: 1 }] },
+        ];
+
+        // ==========================================
+        // COMPONENTS
+        // ==========================================
+
+        // Status Badge
+        const StatusBadge = ({ status }) => {
+            const config = {
+                pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-500', label: 'En attente' },
+                shipped: { bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-500', label: 'Expédié' },
+                in_transit: { bg: 'bg-indigo-100', text: 'text-indigo-800', dot: 'bg-indigo-500', label: 'En transit' },
+                out_for_delivery: { bg: 'bg-purple-100', text: 'text-purple-800', dot: 'bg-purple-500', label: 'En livraison' },
+                delivered: { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-500', label: 'Livré' },
+                exception: { bg: 'bg-red-100', text: 'text-red-800', dot: 'bg-red-500', label: 'Exception' },
+                cancelled: { bg: 'bg-gray-100', text: 'text-gray-800', dot: 'bg-gray-500', label: 'Annulé' },
+                returned: { bg: 'bg-orange-100', text: 'text-orange-800', dot: 'bg-orange-500', label: 'Retourné' }
+            }[status] || { bg: 'bg-gray-100', text: 'text-gray-800', dot: 'bg-gray-500', label: status };
+
+            return (
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`}></span>
+                    {config.label}
+                </span>
+            );
+        };
+
+        // Carrier Logo
+        const CarrierLogo = ({ carrier, size = 'md' }) => {
+            const logos = {
+                colissimo: { emoji: '📮', color: 'bg-yellow-100 text-yellow-700' },
+                chronopost: { emoji: '⚡', color: 'bg-blue-100 text-blue-700' },
+                mondial_relay: { emoji: '🏪', color: 'bg-orange-100 text-orange-700' },
+                dhl: { emoji: '📦', color: 'bg-yellow-100 text-yellow-700' },
+                ups: { emoji: '🟤', color: 'bg-amber-100 text-amber-700' },
+                fedex: { emoji: '🟣', color: 'bg-purple-100 text-purple-700' },
+                gls: { emoji: '🔵', color: 'bg-blue-100 text-blue-700' },
+                dpd: { emoji: '🔴', color: 'bg-red-100 text-red-700' }
+            }[carrier] || { emoji: '📦', color: 'bg-gray-100 text-gray-700' };
+
+            const sizeClass = size === 'lg' ? 'w-12 h-12 text-xl' : size === 'sm' ? 'w-6 h-6 text-sm' : 'w-8 h-8 text-base';
+
+            return (
+                <div className={`${sizeClass} ${logos.color} rounded-lg flex items-center justify-center`}>
+                    {logos.emoji}
+                </div>
+            );
+        };
+
+        // Input Field
+        const Input = ({ label, error, ...props }) => (
+            <div className="space-y-1">
+                {label && <label className="block text-sm font-medium text-gray-700">{label}</label>}
+                <input
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#00FF88] focus:border-[#00FF88] outline-none transition-all ${error ? 'border-red-500' : 'border-gray-300'}`}
+                    {...props}
+                />
+                {error && <p className="text-xs text-red-500">{error}</p>}
+            </div>
+        );
+
+        // Select Field
+        const Select = ({ label, options, error, ...props }) => (
+            <div className="space-y-1">
+                {label && <label className="block text-sm font-medium text-gray-700">{label}</label>}
+                <select
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#00FF88] focus:border-[#00FF88] outline-none transition-all ${error ? 'border-red-500' : 'border-gray-300'}`}
+                    {...props}
+                >
+                    {options.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                </select>
+                {error && <p className="text-xs text-red-500">{error}</p>}
+            </div>
+        );
+
+        // Button
+        const Button = ({ children, variant = 'primary', size = 'md', loading, disabled, ...props }) => {
+            const variants = {
+                primary: 'bg-[#00FF88] hover:bg-[#00E07A] text-black',
+                secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-900',
+                danger: 'bg-red-500 hover:bg-red-600 text-white',
+                ghost: 'bg-transparent hover:bg-gray-100 text-gray-700'
+            };
+            const sizes = {
+                sm: 'px-3 py-1.5 text-sm',
+                md: 'px-4 py-2',
+                lg: 'px-6 py-3 text-lg'
+            };
+
+            return (
+                <button
+                    className={`${variants[variant]} ${sizes[size]} rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+                    disabled={disabled || loading}
+                    {...props}
+                >
+                    {loading && <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                    {children}
+                </button>
+            );
+        };
+
+        // Modal
+        const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+            if (!isOpen) return null;
+
+            const sizeClasses = {
+                sm: 'max-w-md',
+                md: 'max-w-2xl',
+                lg: 'max-w-4xl',
+                xl: 'max-w-6xl',
+                full: 'max-w-[95vw]'
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay fade-in" onClick={onClose}>
+                    <div className={`bg-white rounded-2xl shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">✕</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Slide Panel
+        const SlidePanel = ({ isOpen, onClose, title, children }) => {
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 z-50 modal-overlay fade-in" onClick={onClose}>
+                    <div className="absolute right-0 top-0 bottom-0 w-full max-w-xl bg-white shadow-xl slide-in flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">✕</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Pagination
+        const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+            const pages = [];
+            const maxVisible = 5;
+            let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let end = Math.min(totalPages, start + maxVisible - 1);
+            if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
+
+            for (let i = start; i <= end; i++) pages.push(i);
+
+            return (
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => onPageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        ←
+                    </button>
+                    {start > 1 && (
+                        <>
+                            <button onClick={() => onPageChange(1)} className="px-3 py-1.5 rounded-lg hover:bg-gray-100">1</button>
+                            {start > 2 && <span className="px-2">...</span>}
+                        </>
+                    )}
+                    {pages.map(page => (
+                        <button
+                            key={page}
+                            onClick={() => onPageChange(page)}
+                            className={`px-3 py-1.5 rounded-lg ${currentPage === page ? 'bg-[#00FF88] text-black font-medium' : 'hover:bg-gray-100'}`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    {end < totalPages && (
+                        <>
+                            {end < totalPages - 1 && <span className="px-2">...</span>}
+                            <button onClick={() => onPageChange(totalPages)} className="px-3 py-1.5 rounded-lg hover:bg-gray-100">{totalPages}</button>
+                        </>
+                    )}
+                    <button
+                        onClick={() => onPageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        →
+                    </button>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // CREATE SHIPMENT FORM
+        // ==========================================
+        const CreateShipmentForm = ({ onClose, onSuccess, carriers }) => {
+            const [step, setStep] = useState(1);
+            const [loading, setLoading] = useState(false);
+            const [loadingRates, setLoadingRates] = useState(false);
+            const [rates, setRates] = useState([]);
+            const [selectedRate, setSelectedRate] = useState(null);
+            const [errors, setErrors] = useState({});
+
+            const [formData, setFormData] = useState({
+                // Sender
+                sender: {
+                    name: 'Ma Boutique',
+                    company: '',
+                    address1: '10 rue du Commerce',
+                    address2: '',
+                    city: 'Paris',
+                    postalCode: '75001',
+                    country: 'FR',
+                    phone: '+33123456789',
+                    email: 'contact@maboutique.fr'
+                },
+                // Recipient
+                recipient: {
+                    name: '',
+                    company: '',
+                    address1: '',
+                    address2: '',
+                    city: '',
+                    postalCode: '',
+                    country: 'FR',
+                    phone: '',
+                    email: ''
+                },
+                // Parcel
+                parcels: [{
+                    weight: '',
+                    length: '',
+                    width: '',
+                    height: ''
+                }],
+                // Options
+                reference: '',
+                options: {
+                    signature: false,
+                    insurance: 0
+                }
+            });
+
+            const updateField = (section, field, value) => {
+                setFormData(prev => ({
+                    ...prev,
+                    [section]: typeof prev[section] === 'object' && !Array.isArray(prev[section])
+                        ? { ...prev[section], [field]: value }
+                        : value
+                }));
+                setErrors(prev => ({ ...prev, [`${section}.${field}`]: null }));
+            };
+
+            const updateParcel = (index, field, value) => {
+                setFormData(prev => ({
+                    ...prev,
+                    parcels: prev.parcels.map((p, i) => i === index ? { ...p, [field]: value } : p)
+                }));
+            };
+
+            const addParcel = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    parcels: [...prev.parcels, { weight: '', length: '', width: '', height: '' }]
+                }));
+            };
+
+            const removeParcel = (index) => {
+                if (formData.parcels.length > 1) {
+                    setFormData(prev => ({
+                        ...prev,
+                        parcels: prev.parcels.filter((_, i) => i !== index)
+                    }));
+                }
+            };
+
+            const validateStep1 = () => {
+                const newErrors = {};
+                if (!formData.recipient.name) newErrors['recipient.name'] = 'Nom requis';
+                if (!formData.recipient.address1) newErrors['recipient.address1'] = 'Adresse requise';
+                if (!formData.recipient.city) newErrors['recipient.city'] = 'Ville requise';
+                if (!formData.recipient.postalCode) newErrors['recipient.postalCode'] = 'Code postal requis';
+                if (!formData.recipient.country) newErrors['recipient.country'] = 'Pays requis';
+                setErrors(newErrors);
+                return Object.keys(newErrors).length === 0;
+            };
+
+            const validateStep2 = () => {
+                const newErrors = {};
+                formData.parcels.forEach((p, i) => {
+                    if (!p.weight || parseFloat(p.weight) <= 0) newErrors[`parcel.${i}.weight`] = 'Poids requis';
+                });
+                setErrors(newErrors);
+                return Object.keys(newErrors).length === 0;
+            };
+
+            const fetchRates = async () => {
+                setLoadingRates(true);
+                try {
+                    // Mock rates
+                    await new Promise(r => setTimeout(r, 1000));
+                    const mockRates = carriers.flatMap(carrier =>
+                        carrier.services.map(service => ({
+                            carrier: carrier.id,
+                            carrierName: carrier.name,
+                            service: service.id,
+                            serviceName: service.name,
+                            price: (Math.random() * 15 + 3).toFixed(2),
+                            estimatedDays: service.estimatedDays,
+                            currency: 'EUR'
+                        }))
+                    ).sort((a, b) => a.price - b.price);
+                    setRates(mockRates);
+                } catch (error) {
+                    console.error('Error fetching rates:', error);
+                } finally {
+                    setLoadingRates(false);
+                }
+            };
+
+            const handleNext = async () => {
+                if (step === 1 && validateStep1()) {
+                    setStep(2);
+                } else if (step === 2 && validateStep2()) {
+                    await fetchRates();
+                    setStep(3);
+                } else if (step === 3 && selectedRate) {
+                    await handleSubmit();
+                }
+            };
+
+            const handleSubmit = async () => {
+                setLoading(true);
+                try {
+                    const shipmentData = {
+                        carrier: selectedRate.carrier,
+                        service: selectedRate.service,
+                        sender: formData.sender,
+                        recipient: formData.recipient,
+                        parcels: formData.parcels.map(p => ({
+                            weight: parseFloat(p.weight),
+                            length: p.length ? parseFloat(p.length) : undefined,
+                            width: p.width ? parseFloat(p.width) : undefined,
+                            height: p.height ? parseFloat(p.height) : undefined
+                        })),
+                        reference: formData.reference,
+                        options: formData.options
+                    };
+
+                    // Mock creation
+                    await new Promise(r => setTimeout(r, 1500));
+                    const newShipment = {
+                        id: `SHP-${Date.now()}`,
+                        tracking_number: `${selectedRate.carrier === 'colissimo' ? '6L' : selectedRate.carrier === 'chronopost' ? 'XY' : 'RT'}${Math.random().toString().slice(2, 13)}`,
+                        ...shipmentData,
+                        status: 'pending',
+                        created_at: new Date().toISOString(),
+                        recipient_name: formData.recipient.name,
+                        recipient_city: formData.recipient.city,
+                        recipient_postal_code: formData.recipient.postalCode,
+                        total_weight: formData.parcels.reduce((sum, p) => sum + parseFloat(p.weight || 0), 0)
+                    };
+
+                    onSuccess(newShipment);
+                } catch (error) {
+                    console.error('Error creating shipment:', error);
+                    setErrors({ submit: error.message });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    {/* Progress Steps */}
+                    <div className="flex items-center justify-between mb-8">
+                        {['Destinataire', 'Colis', 'Transporteur'].map((label, i) => (
+                            <div key={i} className="flex items-center flex-1">
+                                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm ${step > i + 1 ? 'bg-[#00FF88] text-black' : step === i + 1 ? 'bg-[#00FF88] text-black' : 'bg-gray-200 text-gray-600'}`}>
+                                    {step > i + 1 ? '✓' : i + 1}
+                                </div>
+                                <span className={`ml-2 text-sm ${step === i + 1 ? 'font-medium text-gray-900' : 'text-gray-500'}`}>{label}</span>
+                                {i < 2 && <div className={`flex-1 h-0.5 mx-4 ${step > i + 1 ? 'bg-[#00FF88]' : 'bg-gray-200'}`} />}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Step 1: Recipient */}
+                    {step === 1 && (
+                        <div className="space-y-4">
+                            <h3 className="font-medium text-gray-900">Informations destinataire</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input label="Nom *" value={formData.recipient.name} onChange={e => updateField('recipient', 'name', e.target.value)} error={errors['recipient.name']} placeholder="Marie Dupont" />
+                                <Input label="Société" value={formData.recipient.company} onChange={e => updateField('recipient', 'company', e.target.value)} placeholder="Optionnel" />
+                            </div>
+                            <Input label="Adresse *" value={formData.recipient.address1} onChange={e => updateField('recipient', 'address1', e.target.value)} error={errors['recipient.address1']} placeholder="10 rue de la Paix" />
+                            <Input label="Complément d'adresse" value={formData.recipient.address2} onChange={e => updateField('recipient', 'address2', e.target.value)} placeholder="Bâtiment A, Apt 12" />
+                            <div className="grid grid-cols-3 gap-4">
+                                <Input label="Code postal *" value={formData.recipient.postalCode} onChange={e => updateField('recipient', 'postalCode', e.target.value)} error={errors['recipient.postalCode']} placeholder="75001" />
+                                <Input label="Ville *" value={formData.recipient.city} onChange={e => updateField('recipient', 'city', e.target.value)} error={errors['recipient.city']} placeholder="Paris" className="col-span-2" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Select label="Pays *" value={formData.recipient.country} onChange={e => updateField('recipient', 'country', e.target.value)} options={[
+                                    { value: 'FR', label: 'France' },
+                                    { value: 'BE', label: 'Belgique' },
+                                    { value: 'CH', label: 'Suisse' },
+                                    { value: 'DE', label: 'Allemagne' },
+                                    { value: 'ES', label: 'Espagne' },
+                                    { value: 'IT', label: 'Italie' },
+                                    { value: 'GB', label: 'Royaume-Uni' },
+                                    { value: 'US', label: 'États-Unis' },
+                                ]} />
+                                <Input label="Téléphone" value={formData.recipient.phone} onChange={e => updateField('recipient', 'phone', e.target.value)} placeholder="+33612345678" />
+                            </div>
+                            <Input label="Email" type="email" value={formData.recipient.email} onChange={e => updateField('recipient', 'email', e.target.value)} placeholder="client@email.com" />
+                        </div>
+                    )}
+
+                    {/* Step 2: Parcels */}
+                    {step === 2 && (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-medium text-gray-900">Détails du colis</h3>
+                                <Button variant="ghost" size="sm" onClick={addParcel}>+ Ajouter un colis</Button>
+                            </div>
+                            {formData.parcels.map((parcel, index) => (
+                                <div key={index} className="p-4 bg-gray-50 rounded-xl space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium text-gray-700">Colis {index + 1}</span>
+                                        {formData.parcels.length > 1 && (
+                                            <button onClick={() => removeParcel(index)} className="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-4">
+                                        <Input label="Poids (kg) *" type="number" step="0.1" min="0.1" value={parcel.weight} onChange={e => updateParcel(index, 'weight', e.target.value)} error={errors[`parcel.${index}.weight`]} placeholder="2.5" />
+                                        <Input label="Longueur (cm)" type="number" value={parcel.length} onChange={e => updateParcel(index, 'length', e.target.value)} placeholder="30" />
+                                        <Input label="Largeur (cm)" type="number" value={parcel.width} onChange={e => updateParcel(index, 'width', e.target.value)} placeholder="20" />
+                                        <Input label="Hauteur (cm)" type="number" value={parcel.height} onChange={e => updateParcel(index, 'height', e.target.value)} placeholder="15" />
+                                    </div>
+                                </div>
+                            ))}
+                            <div className="border-t border-gray-200 pt-4">
+                                <h4 className="font-medium text-gray-900 mb-3">Options</h4>
+                                <div className="space-y-3">
+                                    <Input label="Référence commande" value={formData.reference} onChange={e => setFormData(prev => ({ ...prev, reference: e.target.value }))} placeholder="CMD-12345" />
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" checked={formData.options.signature} onChange={e => updateField('options', 'signature', e.target.checked)} className="w-4 h-4 rounded text-[#00FF88] focus:ring-[#00FF88]" />
+                                        <span className="text-sm text-gray-700">Signature obligatoire à la livraison</span>
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input type="checkbox" checked={formData.options.insurance > 0} onChange={e => updateField('options', 'insurance', e.target.checked ? 100 : 0)} className="w-4 h-4 rounded text-[#00FF88] focus:ring-[#00FF88]" />
+                                        <span className="text-sm text-gray-700">Assurance ad valorem</span>
+                                        {formData.options.insurance > 0 && (
+                                            <Input type="number" value={formData.options.insurance} onChange={e => updateField('options', 'insurance', parseInt(e.target.value))} className="w-24" placeholder="100" />
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 3: Carrier Selection */}
+                    {step === 3 && (
+                        <div className="space-y-4">
+                            <h3 className="font-medium text-gray-900">Choisir le transporteur</h3>
+                            {loadingRates ? (
+                                <div className="text-center py-12">
+                                    <div className="w-8 h-8 border-4 border-[#00FF88] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                                    <p className="text-gray-500">Calcul des tarifs en cours...</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {rates.map((rate, index) => (
+                                        <div
+                                            key={index}
+                                            onClick={() => setSelectedRate(rate)}
+                                            className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedRate === rate ? 'border-[#00FF88] bg-[#00FF88]/5' : 'border-gray-200 hover:border-gray-300'}`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <CarrierLogo carrier={rate.carrier} />
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">{rate.carrierName}</p>
+                                                        <p className="text-sm text-gray-500">{rate.serviceName}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-lg font-bold text-gray-900">{rate.price} €</p>
+                                                    <p className="text-sm text-gray-500">{rate.estimatedDays} jour{rate.estimatedDays > 1 ? 's' : ''}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Error message */}
+                    {errors.submit && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                            {errors.submit}
+                        </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <Button variant="ghost" onClick={step === 1 ? onClose : () => setStep(step - 1)}>
+                            {step === 1 ? 'Annuler' : '← Retour'}
+                        </Button>
+                        <Button onClick={handleNext} loading={loading} disabled={step === 3 && !selectedRate}>
+                            {step === 3 ? 'Créer l\'expédition' : 'Continuer →'}
+                        </Button>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // SHIPMENT DETAILS PANEL
+        // ==========================================
+        const ShipmentDetailsPanel = ({ shipment, onClose }) => {
+            const [tracking, setTracking] = useState(null);
+            const [loadingTracking, setLoadingTracking] = useState(true);
+
+            useEffect(() => {
+                const fetchTracking = async () => {
+                    setLoadingTracking(true);
+                    try {
+                        // Mock tracking data
+                        await new Promise(r => setTimeout(r, 800));
+                        setTracking({
+                            trackingNumber: shipment.tracking_number,
+                            carrier: shipment.carrier,
+                            status: shipment.status,
+                            estimatedDelivery: '2024-01-17',
+                            events: [
+                                { timestamp: '2024-01-15T14:30:00Z', status: 'in_transit', description: 'Colis en cours d\'acheminement', location: 'Centre de tri Paris' },
+                                { timestamp: '2024-01-15T08:00:00Z', status: 'shipped', description: 'Colis pris en charge', location: 'Entrepôt expéditeur' },
+                                { timestamp: '2024-01-14T16:00:00Z', status: 'pending', description: 'Étiquette créée', location: '' }
+                            ]
+                        });
+                    } catch (error) {
+                        console.error('Error fetching tracking:', error);
+                    } finally {
+                        setLoadingTracking(false);
+                    }
+                };
+                fetchTracking();
+            }, [shipment.tracking_number]);
+
+            const carrierName = mockCarriers.find(c => c.id === shipment.carrier)?.name || shipment.carrier;
+
+            return (
+                <div className="h-full flex flex-col">
+                    {/* Header */}
+                    <div className="p-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
+                        <div className="flex items-center gap-4 mb-4">
+                            <CarrierLogo carrier={shipment.carrier} size="lg" />
+                            <div>
+                                <p className="text-sm text-gray-400">{carrierName}</p>
+                                <p className="text-xl font-mono font-bold">{shipment.tracking_number}</p>
+                            </div>
+                        </div>
+                        <StatusBadge status={shipment.status} />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                        {/* Recipient Info */}
+                        <div className="bg-gray-50 rounded-xl p-4">
+                            <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                                <span>📍</span> Destinataire
+                            </h4>
+                            <p className="font-medium text-gray-900">{shipment.recipient_name}</p>
+                            <p className="text-gray-600">{shipment.recipient_city}, {shipment.recipient_postal_code}</p>
+                        </div>
+
+                        {/* Shipment Details */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-gray-50 rounded-xl p-4">
+                                <p className="text-sm text-gray-500 mb-1">Poids total</p>
+                                <p className="font-semibold text-gray-900">{shipment.total_weight} kg</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-xl p-4">
+                                <p className="text-sm text-gray-500 mb-1">Service</p>
+                                <p className="font-semibold text-gray-900 capitalize">{shipment.service}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-xl p-4">
+                                <p className="text-sm text-gray-500 mb-1">Créée le</p>
+                                <p className="font-semibold text-gray-900">{new Date(shipment.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+                            {shipment.delivered_at && (
+                                <div className="bg-green-50 rounded-xl p-4">
+                                    <p className="text-sm text-green-600 mb-1">Livrée le</p>
+                                    <p className="font-semibold text-green-700">{new Date(shipment.delivered_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Tracking Timeline */}
+                        <div>
+                            <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                                <span>📦</span> Suivi
+                            </h4>
+                            {loadingTracking ? (
+                                <div className="text-center py-8">
+                                    <div className="w-6 h-6 border-2 border-[#00FF88] border-t-transparent rounded-full animate-spin mx-auto" />
+                                </div>
+                            ) : tracking?.events ? (
+                                <div className="space-y-4">
+                                    {tracking.events.map((event, index) => (
+                                        <div key={index} className="flex gap-4">
+                                            <div className="flex flex-col items-center">
+                                                <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-[#00FF88]' : 'bg-gray-300'}`} />
+                                                {index < tracking.events.length - 1 && <div className="w-0.5 h-full bg-gray-200 mt-1" />}
+                                            </div>
+                                            <div className="flex-1 pb-4">
+                                                <p className="font-medium text-gray-900">{event.description}</p>
+                                                {event.location && <p className="text-sm text-gray-500">{event.location}</p>}
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    {new Date(event.timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 text-center py-4">Aucune information de suivi disponible</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="p-4 border-t border-gray-200 space-y-2">
+                        <Button variant="secondary" className="w-full" onClick={() => window.open(`https://www.laposte.fr/outils/suivre-vos-envois?code=${shipment.tracking_number}`, '_blank')}>
+                            🔗 Suivre sur le site transporteur
+                        </Button>
+                        <Button variant="secondary" className="w-full" onClick={() => alert('Téléchargement étiquette...')}>
+                            🏷️ Télécharger l'étiquette
+                        </Button>
+                        {shipment.status === 'pending' && (
+                            <Button variant="danger" className="w-full">
+                                ❌ Annuler l'expédition
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // MAIN APP
+        // ==========================================
+        const ShipmentsApp = () => {
+            // State
+            const [shipments, setShipments] = useState(mockShipments);
+            const [loading, setLoading] = useState(false);
+            const [carriers] = useState(mockCarriers);
+            
+            // Filters
+            const [filters, setFilters] = useState({
+                search: '',
+                status: '',
+                carrier: '',
+                dateFrom: '',
+                dateTo: ''
+            });
+            
+            // Pagination
+            const [currentPage, setCurrentPage] = useState(1);
+            const [itemsPerPage] = useState(10);
+            
+            // Modals
+            const [showCreateModal, setShowCreateModal] = useState(false);
+            const [selectedShipment, setSelectedShipment] = useState(null);
+            
+            // Selection
+            const [selectedIds, setSelectedIds] = useState(new Set());
+
+            // Filtered shipments
+            const filteredShipments = useMemo(() => {
+                return shipments.filter(s => {
+                    if (filters.search) {
+                        const search = filters.search.toLowerCase();
+                        if (!s.tracking_number.toLowerCase().includes(search) &&
+                            !s.recipient_name.toLowerCase().includes(search) &&
+                            !s.recipient_city.toLowerCase().includes(search)) {
+                            return false;
+                        }
+                    }
+                    if (filters.status && s.status !== filters.status) return false;
+                    if (filters.carrier && s.carrier !== filters.carrier) return false;
+                    return true;
+                });
+            }, [shipments, filters]);
+
+            // Paginated shipments
+            const paginatedShipments = useMemo(() => {
+                const start = (currentPage - 1) * itemsPerPage;
+                return filteredShipments.slice(start, start + itemsPerPage);
+            }, [filteredShipments, currentPage, itemsPerPage]);
+
+            const totalPages = Math.ceil(filteredShipments.length / itemsPerPage);
+
+            // Stats
+            const stats = useMemo(() => ({
+                total: shipments.length,
+                pending: shipments.filter(s => s.status === 'pending').length,
+                inTransit: shipments.filter(s => s.status === 'in_transit').length,
+                delivered: shipments.filter(s => s.status === 'delivered').length,
+                exception: shipments.filter(s => s.status === 'exception').length
+            }), [shipments]);
+
+            // Handlers
+            const handleCreateSuccess = (newShipment) => {
+                setShipments(prev => [newShipment, ...prev]);
+                setShowCreateModal(false);
+            };
+
+            const toggleSelection = (id) => {
+                setSelectedIds(prev => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                });
+            };
+
+            const toggleAllSelection = () => {
+                if (selectedIds.size === paginatedShipments.length) {
+                    setSelectedIds(new Set());
+                } else {
+                    setSelectedIds(new Set(paginatedShipments.map(s => s.id)));
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-20">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <a href="/" className="flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-lg flex items-center justify-center">
+                                        <span className="text-black font-bold text-sm">R</span>
+                                    </div>
+                                    <span className="font-bold text-gray-900">Routz</span>
+                                </a>
+                                <span className="text-gray-300">|</span>
+                                <h1 className="text-lg font-semibold text-gray-900">Expéditions</h1>
+                            </div>
+                            <Button onClick={() => setShowCreateModal(true)}>
+                                + Nouvelle expédition
+                            </Button>
+                        </div>
+                    </header>
+
+                    <main className="p-6">
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-5 gap-4 mb-6">
+                            {[
+                                { label: 'Total', value: stats.total, color: 'text-gray-900', bg: 'bg-white' },
+                                { label: 'En attente', value: stats.pending, color: 'text-yellow-700', bg: 'bg-yellow-50' },
+                                { label: 'En transit', value: stats.inTransit, color: 'text-indigo-700', bg: 'bg-indigo-50' },
+                                { label: 'Livrées', value: stats.delivered, color: 'text-green-700', bg: 'bg-green-50' },
+                                { label: 'Exceptions', value: stats.exception, color: 'text-red-700', bg: 'bg-red-50' }
+                            ].map((stat, i) => (
+                                <div key={i} className={`${stat.bg} rounded-xl p-4 border border-gray-100`}>
+                                    <p className="text-sm text-gray-500">{stat.label}</p>
+                                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Filters */}
+                        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+                            <div className="flex items-center gap-4 flex-wrap">
+                                <div className="flex-1 min-w-[200px]">
+                                    <input
+                                        type="text"
+                                        placeholder="🔍 Rechercher par tracking, nom, ville..."
+                                        value={filters.search}
+                                        onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00FF88] focus:border-[#00FF88] outline-none"
+                                    />
+                                </div>
+                                <select
+                                    value={filters.status}
+                                    onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00FF88] focus:border-[#00FF88] outline-none"
+                                >
+                                    <option value="">Tous les statuts</option>
+                                    <option value="pending">En attente</option>
+                                    <option value="shipped">Expédié</option>
+                                    <option value="in_transit">En transit</option>
+                                    <option value="delivered">Livré</option>
+                                    <option value="exception">Exception</option>
+                                </select>
+                                <select
+                                    value={filters.carrier}
+                                    onChange={e => setFilters(prev => ({ ...prev, carrier: e.target.value }))}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00FF88] focus:border-[#00FF88] outline-none"
+                                >
+                                    <option value="">Tous les transporteurs</option>
+                                    {carriers.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                                <input
+                                    type="date"
+                                    value={filters.dateFrom}
+                                    onChange={e => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00FF88] focus:border-[#00FF88] outline-none"
+                                />
+                                <span className="text-gray-400">→</span>
+                                <input
+                                    type="date"
+                                    value={filters.dateTo}
+                                    onChange={e => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00FF88] focus:border-[#00FF88] outline-none"
+                                />
+                                {(filters.search || filters.status || filters.carrier || filters.dateFrom || filters.dateTo) && (
+                                    <Button variant="ghost" size="sm" onClick={() => setFilters({ search: '', status: '', carrier: '', dateFrom: '', dateTo: '' })}>
+                                        ✕ Réinitialiser
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Bulk Actions */}
+                        {selectedIds.size > 0 && (
+                            <div className="bg-gray-900 text-white rounded-xl p-4 mb-4 flex items-center justify-between">
+                                <span>{selectedIds.size} expédition(s) sélectionnée(s)</span>
+                                <div className="flex items-center gap-2">
+                                    <Button variant="secondary" size="sm">📄 Exporter</Button>
+                                    <Button variant="secondary" size="sm">🏷️ Imprimer étiquettes</Button>
+                                    <Button variant="danger" size="sm">❌ Annuler</Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Table */}
+                        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.size === paginatedShipments.length && paginatedShipments.length > 0}
+                                                onChange={toggleAllSelection}
+                                                className="w-4 h-4 rounded text-[#00FF88] focus:ring-[#00FF88]"
+                                            />
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transporteur</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destinataire</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th className="px-4 py-3"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {paginatedShipments.map(shipment => (
+                                        <tr key={shipment.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedShipment(shipment)}>
+                                            <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.has(shipment.id)}
+                                                    onChange={() => toggleSelection(shipment.id)}
+                                                    className="w-4 h-4 rounded text-[#00FF88] focus:ring-[#00FF88]"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className="font-mono text-sm text-blue-600 hover:underline">{shipment.tracking_number}</span>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <CarrierLogo carrier={shipment.carrier} size="sm" />
+                                                    <span className="text-sm text-gray-900">{carriers.find(c => c.id === shipment.carrier)?.name || shipment.carrier}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4 text-gray-900">{shipment.recipient_name}</td>
+                                            <td className="px-4 py-4 text-gray-600">{shipment.recipient_city}, {shipment.recipient_postal_code}</td>
+                                            <td className="px-4 py-4"><StatusBadge status={shipment.status} /></td>
+                                            <td className="px-4 py-4 text-gray-500 text-sm">
+                                                {new Date(shipment.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                            </td>
+                                            <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+                                                <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-900">⋮</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+
+                            {/* Empty State */}
+                            {paginatedShipments.length === 0 && (
+                                <div className="text-center py-12">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">📦</div>
+                                    <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune expédition trouvée</h3>
+                                    <p className="text-gray-500 mb-4">Modifiez vos filtres ou créez une nouvelle expédition</p>
+                                    <Button onClick={() => setShowCreateModal(true)}>+ Nouvelle expédition</Button>
+                                </div>
+                            )}
+
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                                    <p className="text-sm text-gray-500">
+                                        Affichage de {(currentPage - 1) * itemsPerPage + 1} à {Math.min(currentPage * itemsPerPage, filteredShipments.length)} sur {filteredShipments.length} résultats
+                                    </p>
+                                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                                </div>
+                            )}
+                        </div>
+                    </main>
+
+                    {/* Create Modal */}
+                    <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Nouvelle expédition" size="lg">
+                        <CreateShipmentForm
+                            onClose={() => setShowCreateModal(false)}
+                            onSuccess={handleCreateSuccess}
+                            carriers={carriers}
+                        />
+                    </Modal>
+
+                    {/* Details Panel */}
+                    <SlidePanel isOpen={!!selectedShipment} onClose={() => setSelectedShipment(null)} title="Détails de l'expédition">
+                        {selectedShipment && <ShipmentDetailsPanel shipment={selectedShipment} onClose={() => setSelectedShipment(null)} />}
+                    </SlidePanel>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<ShipmentsApp />);
+    </script>
+</body>
+</html>

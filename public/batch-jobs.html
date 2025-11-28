@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Traitements en masse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .animate-slideIn { animation: slideIn 0.3s ease-out; }
+        .animate-pulse { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const Icons = {
+            play: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>,
+            pause: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>,
+            stop: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>,
+            clock: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+            plus: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
+            x: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+        };
+
+        const jobTypes = {
+            create_shipments: { label: 'Créer expéditions', icon: '📦', color: 'bg-blue-100 text-blue-600' },
+            print_labels: { label: 'Imprimer étiquettes', icon: '🖨️', color: 'bg-purple-100 text-purple-600' },
+            update_tracking: { label: 'Mise à jour suivi', icon: '🔄', color: 'bg-green-100 text-green-600' },
+            export_data: { label: 'Export données', icon: '📥', color: 'bg-orange-100 text-orange-600' },
+        };
+
+        const statusConfig = {
+            pending: { label: 'En attente', color: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' },
+            running: { label: 'En cours', color: 'bg-blue-100 text-blue-600', dot: 'bg-blue-500' },
+            paused: { label: 'En pause', color: 'bg-yellow-100 text-yellow-600', dot: 'bg-yellow-500' },
+            completed: { label: 'Terminé', color: 'bg-green-100 text-green-600', dot: 'bg-green-500' },
+            completed_with_errors: { label: 'Avec erreurs', color: 'bg-orange-100 text-orange-600', dot: 'bg-orange-500' },
+            cancelled: { label: 'Annulé', color: 'bg-red-100 text-red-600', dot: 'bg-red-500' },
+        };
+
+        const generateJobs = () => {
+            const types = Object.keys(jobTypes);
+            return Array.from({ length: 6 }, (_, i) => {
+                const type = types[i % types.length];
+                const status = i < 2 ? 'running' : ['completed', 'completed_with_errors', 'pending'][i % 3];
+                const total = Math.floor(Math.random() * 150) + 50;
+                const completed = status === 'pending' ? 0 : status.includes('completed') ? total : Math.floor(Math.random() * total);
+                return {
+                    id: `job_${1000 + i}`,
+                    type,
+                    status,
+                    progress: Math.round((completed / total) * 100),
+                    stats: { total, completed, failed: status === 'completed_with_errors' ? 3 : 0, pending: total - completed },
+                    createdAt: new Date(Date.now() - i * 3600000).toISOString(),
+                    startedAt: status !== 'pending' ? new Date(Date.now() - i * 3600000).toISOString() : null,
+                };
+            });
+        };
+
+        const BatchJobsPage = () => {
+            const [jobs, setJobs] = useState(() => generateJobs());
+            const [filter, setFilter] = useState('all');
+            const [showModal, setShowModal] = useState(false);
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setJobs(prev => prev.map(job => {
+                        if (job.status !== 'running') return job;
+                        const newCompleted = Math.min(job.stats.completed + Math.floor(Math.random() * 5) + 1, job.stats.total);
+                        const newProgress = Math.round((newCompleted / job.stats.total) * 100);
+                        if (newProgress >= 100) {
+                            return { ...job, status: 'completed', progress: 100, stats: { ...job.stats, completed: job.stats.total, pending: 0 } };
+                        }
+                        return { ...job, progress: newProgress, stats: { ...job.stats, completed: newCompleted, pending: job.stats.total - newCompleted } };
+                    }));
+                }, 2000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const filteredJobs = useMemo(() => {
+                if (filter === 'all') return jobs;
+                if (filter === 'active') return jobs.filter(j => ['running', 'pending'].includes(j.status));
+                return jobs.filter(j => j.status === filter);
+            }, [jobs, filter]);
+
+            const stats = useMemo(() => ({
+                total: jobs.length,
+                running: jobs.filter(j => j.status === 'running').length,
+                completed: jobs.filter(j => j.status === 'completed').length,
+            }), [jobs]);
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <header className="bg-white border-b border-gray-200">
+                        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                    <span className="text-black font-bold">R</span>
+                                </div>
+                                <div>
+                                    <h1 className="font-semibold text-gray-900">Traitements en masse</h1>
+                                    <p className="text-xs text-gray-500">{stats.running} en cours</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#00FF88] to-[#00D4AA] text-black rounded-xl font-medium">
+                                {Icons.plus} Nouveau
+                            </button>
+                        </div>
+                    </header>
+
+                    <main className="max-w-5xl mx-auto px-4 py-6">
+                        <div className="grid grid-cols-4 gap-4 mb-6">
+                            {[
+                                { label: 'Total', value: stats.total, color: 'text-gray-900' },
+                                { label: 'En cours', value: stats.running, color: 'text-blue-600' },
+                                { label: 'Terminés', value: stats.completed, color: 'text-green-600' },
+                                { label: 'En attente', value: jobs.filter(j => j.status === 'pending').length, color: 'text-yellow-600' },
+                            ].map((s, i) => (
+                                <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+                                    <p className="text-sm text-gray-500">{s.label}</p>
+                                    <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-2 mb-4">
+                            {['all', 'active', 'completed'].map(f => (
+                                <button key={f} onClick={() => setFilter(f)}
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium border ${filter === f ? 'bg-[#f0fdf4] border-[#00FF88]' : 'border-gray-200 bg-white'}`}>
+                                    {f === 'all' ? 'Tous' : f === 'active' ? 'Actifs' : 'Terminés'}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="space-y-3">
+                            {filteredJobs.map((job, i) => {
+                                const type = jobTypes[job.type];
+                                const status = statusConfig[job.status];
+                                return (
+                                    <div key={job.id} className="bg-white rounded-2xl border border-gray-200 p-5 animate-slideIn">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${type.color}`}>
+                                                    {type.icon}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="font-semibold">{type.label}</h3>
+                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
+                                                            <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${status.dot} ${job.status === 'running' ? 'animate-pulse' : ''}`}></span>
+                                                            {status.label}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-500">ID: {job.id}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {job.status === 'running' && (
+                                                    <button onClick={() => setJobs(p => p.map(j => j.id === job.id ? {...j, status: 'paused'} : j))}
+                                                        className="p-2 hover:bg-yellow-50 text-yellow-600 rounded-lg">{Icons.pause}</button>
+                                                )}
+                                                {job.status === 'paused' && (
+                                                    <button onClick={() => setJobs(p => p.map(j => j.id === job.id ? {...j, status: 'running'} : j))}
+                                                        className="p-2 hover:bg-green-50 text-green-600 rounded-lg">{Icons.play}</button>
+                                                )}
+                                                {['running', 'paused', 'pending'].includes(job.status) && (
+                                                    <button onClick={() => setJobs(p => p.map(j => j.id === job.id ? {...j, status: 'cancelled'} : j))}
+                                                        className="p-2 hover:bg-red-50 text-red-600 rounded-lg">{Icons.stop}</button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <div className="flex justify-between text-sm mb-1">
+                                                <span className="text-gray-600">Progression</span>
+                                                <span className="font-medium">{job.progress}%</span>
+                                            </div>
+                                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full transition-all duration-500 ${job.status === 'running' ? 'bg-blue-500' : job.status === 'completed' ? 'bg-green-500' : 'bg-gray-400'}`}
+                                                    style={{ width: `${job.progress}%` }} />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-6 text-sm text-gray-600">
+                                            <span>Total: <b>{job.stats.total}</b></span>
+                                            <span>Traités: <b className="text-green-600">{job.stats.completed}</b></span>
+                                            {job.stats.failed > 0 && <span>Échecs: <b className="text-red-600">{job.stats.failed}</b></span>}
+                                            <span>Restants: <b>{job.stats.pending}</b></span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </main>
+
+                    {showModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+                            <div className="absolute inset-0 bg-black/30" />
+                            <div className="relative bg-white rounded-2xl w-full max-w-md p-6 animate-slideIn" onClick={e => e.stopPropagation()}>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-bold">Nouveau traitement</h2>
+                                    <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">{Icons.x}</button>
+                                </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Type</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {Object.entries(jobTypes).map(([key, cfg]) => (
+                                                <button key={key} className="flex items-center gap-2 p-3 border border-gray-200 rounded-xl hover:border-[#00FF88]">
+                                                    <span className="text-xl">{cfg.icon}</span>
+                                                    <span className="text-sm font-medium">{cfg.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Éléments</label>
+                                        <select className="w-full px-4 py-2.5 border border-gray-200 rounded-xl">
+                                            <option>Toutes les commandes en attente (127)</option>
+                                            <option>Commandes sélectionnées</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 mt-6">
+                                    <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-medium">Annuler</button>
+                                    <button className="flex-1 py-3 bg-gradient-to-r from-[#00FF88] to-[#00D4AA] text-black rounded-xl font-semibold">Démarrer</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<BatchJobsPage />);
+    </script>
+</body>
+</html>

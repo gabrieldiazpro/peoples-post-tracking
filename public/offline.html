@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Hors ligne</title>
+    <style>
+        * { font-family: 'Inter', -apple-system, sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
+        .container { text-align: center; padding: 40px; max-width: 400px; }
+        .icon { width: 120px; height: 120px; margin: 0 auto 24px; background: linear-gradient(135deg, #00FF88, #00D4AA); border-radius: 30px; display: flex; align-items: center; justify-content: center; }
+        .icon svg { width: 60px; height: 60px; stroke: white; }
+        h1 { font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
+        p { color: #64748b; margin-bottom: 24px; line-height: 1.6; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: #1e293b; color: white; border-radius: 12px; text-decoration: none; font-weight: 500; transition: all 0.2s; }
+        .btn:hover { background: #334155; transform: translateY(-2px); }
+        .status { margin-top: 24px; padding: 12px; background: #fef3c7; border-radius: 8px; color: #92400e; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a5 5 0 01-7.072-7.072m0 0L3 3m4.243 4.243L3 3" />
+            </svg>
+        </div>
+        <h1>Vous êtes hors ligne</h1>
+        <p>Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.</p>
+        <a href="/" class="btn" onclick="window.location.reload(); return false;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Réessayer
+        </a>
+        <div class="status" id="status">
+            Connexion en cours de vérification...
+        </div>
+    </div>
+    <script>
+        // Vérification périodique de la connexion
+        function checkConnection() {
+            fetch('/api/health', { method: 'HEAD', cache: 'no-store' })
+                .then(() => {
+                    document.getElementById('status').textContent = '✓ Connexion rétablie! Redirection...';
+                    document.getElementById('status').style.background = '#d1fae5';
+                    document.getElementById('status').style.color = '#065f46';
+                    setTimeout(() => window.location.href = '/', 1000);
+                })
+                .catch(() => {
+                    document.getElementById('status').textContent = '⚠️ Toujours hors ligne';
+                    setTimeout(checkConnection, 5000);
+                });
+        }
+        setTimeout(checkConnection, 2000);
+
+        // Écouter les changements de connexion
+        window.addEventListener('online', () => window.location.reload());
+    </script>
+</body>
+</html>

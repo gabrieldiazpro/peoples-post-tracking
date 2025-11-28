@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - QoS & Performances</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse-slow { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+        const { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } = Recharts;
+
+        const carriersData = [
+            { 
+                id: 'colissimo', name: 'Colissimo', logo: '📦',
+                score: 87, rating: 'A', ratingColor: '#34D399',
+                metrics: { deliveryRate: 94.5, onTimeRate: 88.2, exceptionRate: 2.1, avgDays: 2.8 },
+                sla: { promised: 3, actual: 2.8, compliance: 91.2 },
+                volume: 1250, trend: 'up', trendValue: 3.2
+            },
+            { 
+                id: 'chronopost', name: 'Chronopost', logo: '⚡',
+                score: 92, rating: 'A+', ratingColor: '#10B981',
+                metrics: { deliveryRate: 97.2, onTimeRate: 94.5, exceptionRate: 1.2, avgDays: 1.5 },
+                sla: { promised: 1, actual: 1.2, compliance: 94.5 },
+                volume: 890, trend: 'up', trendValue: 5.1
+            },
+            { 
+                id: 'mondial_relay', name: 'Mondial Relay', logo: '🏪',
+                score: 78, rating: 'B', ratingColor: '#FBBF24',
+                metrics: { deliveryRate: 91.8, onTimeRate: 82.4, exceptionRate: 3.5, avgDays: 4.2 },
+                sla: { promised: 5, actual: 4.2, compliance: 82.4 },
+                volume: 650, trend: 'stable', trendValue: 0.3
+            },
+            { 
+                id: 'dhl', name: 'DHL Express', logo: '✈️',
+                score: 89, rating: 'A', ratingColor: '#34D399',
+                metrics: { deliveryRate: 95.8, onTimeRate: 90.1, exceptionRate: 1.8, avgDays: 2.1 },
+                sla: { promised: 2, actual: 2.1, compliance: 90.1 },
+                volume: 320, trend: 'up', trendValue: 8.5
+            },
+            { 
+                id: 'ups', name: 'UPS', logo: '🟤',
+                score: 85, rating: 'A', ratingColor: '#34D399',
+                metrics: { deliveryRate: 93.2, onTimeRate: 87.5, exceptionRate: 2.4, avgDays: 2.5 },
+                sla: { promised: 2, actual: 2.5, compliance: 87.5 },
+                volume: 180, trend: 'down', trendValue: -2.1
+            }
+        ];
+
+        const delaysData = [
+            { id: 'SHP-001', tracking: '6L123456789FR', carrier: 'Colissimo', customer: 'Marie Dupont', destination: 'Lyon', delayDays: 3.5, risk: 'critical', lastUpdate: '48h' },
+            { id: 'SHP-002', tracking: 'XY987654321', carrier: 'Chronopost', customer: 'Jean Martin', destination: 'Marseille', delayDays: 1.2, risk: 'medium', lastUpdate: '12h' },
+            { id: 'SHP-003', tracking: 'MR456789123', carrier: 'Mondial Relay', customer: 'Sophie Bernard', destination: 'Bordeaux', delayDays: 2.8, risk: 'high', lastUpdate: '36h' },
+        ];
+
+        const weeklyTrend = [
+            { week: 'S1', onTime: 89, delayed: 11 },
+            { week: 'S2', onTime: 92, delayed: 8 },
+            { week: 'S3', onTime: 87, delayed: 13 },
+            { week: 'S4', onTime: 91, delayed: 9 },
+        ];
+
+        const QoSPage = () => {
+            const [period, setPeriod] = useState('30d');
+            const [selectedCarrier, setSelectedCarrier] = useState(null);
+
+            const globalScore = Math.round(carriersData.reduce((s, c) => s + c.score, 0) / carriersData.length);
+
+            const ScoreGauge = ({ score, size = 120 }) => {
+                const radius = (size - 20) / 2;
+                const circumference = radius * Math.PI;
+                const progress = (score / 100) * circumference;
+                const color = score >= 90 ? '#10B981' : score >= 80 ? '#34D399' : score >= 70 ? '#FBBF24' : '#EF4444';
+
+                return (
+                    <div className="relative" style={{ width: size, height: size / 2 + 20 }}>
+                        <svg width={size} height={size / 2 + 20} className="transform -rotate-0">
+                            <path d={`M 10 ${size / 2} A ${radius} ${radius} 0 0 1 ${size - 10} ${size / 2}`}
+                                fill="none" stroke="#E5E7EB" strokeWidth="10" strokeLinecap="round" />
+                            <path d={`M 10 ${size / 2} A ${radius} ${radius} 0 0 1 ${size - 10} ${size / 2}`}
+                                fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+                                strokeDasharray={`${progress} ${circumference}`} />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+                            <span className="text-3xl font-bold" style={{ color }}>{score}</span>
+                            <span className="text-xs text-gray-500">/ 100</span>
+                        </div>
+                    </div>
+                );
+            };
+
+            const RatingBadge = ({ rating, color }) => (
+                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold" style={{ backgroundColor: `${color}20`, color }}>
+                    {rating}
+                </div>
+            );
+
+            const RiskBadge = ({ risk }) => {
+                const config = {
+                    critical: { color: 'bg-red-100 text-red-700', icon: '🔴' },
+                    high: { color: 'bg-orange-100 text-orange-700', icon: '🟠' },
+                    medium: { color: 'bg-yellow-100 text-yellow-700', icon: '🟡' },
+                    low: { color: 'bg-green-100 text-green-700', icon: '🟢' }
+                };
+                return (
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config[risk].color}`}>
+                        {config[risk].icon} {risk.charAt(0).toUpperCase() + risk.slice(1)}
+                    </span>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+                        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                    <span className="text-black font-bold">R</span>
+                                </div>
+                                <div>
+                                    <h1 className="font-semibold text-gray-900">QoS & Performances</h1>
+                                    <p className="text-xs text-gray-500">Qualité de service transporteurs</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {['7d', '30d', '90d'].map(p => (
+                                    <button key={p} onClick={() => setPeriod(p)}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium ${period === p ? 'bg-[#00FF88] text-black' : 'bg-gray-100 text-gray-600'}`}>
+                                        {p === '7d' ? '7 jours' : p === '30d' ? '30 jours' : '90 jours'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="max-w-7xl mx-auto px-4 py-6">
+                        {/* Global Score & Alerts */}
+                        <div className="grid grid-cols-4 gap-6 mb-6">
+                            <div className="bg-white rounded-2xl p-6 border border-gray-100 flex flex-col items-center">
+                                <h3 className="text-sm text-gray-500 mb-4">Score Global</h3>
+                                <ScoreGauge score={globalScore} size={140} />
+                                <p className="mt-2 text-sm text-gray-600">Moyenne tous transporteurs</p>
+                            </div>
+
+                            <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                                <h3 className="text-sm text-gray-500 mb-4">Taux de livraison</h3>
+                                <p className="text-4xl font-bold text-gray-900">94.5%</p>
+                                <p className="text-sm text-green-600 mt-2">↑ +1.2% vs période précédente</p>
+                            </div>
+
+                            <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                                <h3 className="text-sm text-gray-500 mb-4">Délai moyen</h3>
+                                <p className="text-4xl font-bold text-gray-900">2.8j</p>
+                                <p className="text-sm text-green-600 mt-2">↓ -0.3j vs période précédente</p>
+                            </div>
+
+                            <div className="bg-white rounded-2xl p-6 border border-red-100 bg-red-50">
+                                <h3 className="text-sm text-red-600 mb-2">⚠️ Alertes actives</h3>
+                                <p className="text-4xl font-bold text-red-600">{delaysData.length}</p>
+                                <p className="text-sm text-red-600 mt-2">{delaysData.filter(d => d.risk === 'critical').length} critiques</p>
+                            </div>
+                        </div>
+
+                        {/* Carriers Comparison */}
+                        <div className="bg-white rounded-2xl border border-gray-100 mb-6">
+                            <div className="p-6 border-b border-gray-100">
+                                <h3 className="font-semibold text-gray-900">Classement Transporteurs</h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transporteur</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Score</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livraison</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ponctualité</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Exceptions</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Délai moy.</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">SLA</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Volume</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tendance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {carriersData.sort((a, b) => b.score - a.score).map((carrier, i) => (
+                                            <tr key={carrier.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedCarrier(carrier)}>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xl">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : carrier.logo}</span>
+                                                        <span className="font-medium text-gray-900">{carrier.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span className="text-lg font-bold" style={{ color: carrier.ratingColor }}>{carrier.score}</span>
+                                                        <RatingBadge rating={carrier.rating} color={carrier.ratingColor} />
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`font-medium ${carrier.metrics.deliveryRate >= 95 ? 'text-green-600' : carrier.metrics.deliveryRate >= 90 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                                        {carrier.metrics.deliveryRate}%
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`font-medium ${carrier.metrics.onTimeRate >= 90 ? 'text-green-600' : carrier.metrics.onTimeRate >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                                        {carrier.metrics.onTimeRate}%
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`font-medium ${carrier.metrics.exceptionRate <= 2 ? 'text-green-600' : carrier.metrics.exceptionRate <= 4 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                                        {carrier.metrics.exceptionRate}%
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className="font-medium text-gray-900">{carrier.metrics.avgDays}j</span>
+                                                    <span className="text-xs text-gray-500 ml-1">(promis: {carrier.sla.promised}j)</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`font-medium ${carrier.sla.compliance >= 90 ? 'text-green-600' : 'text-orange-600'}`}>
+                                                        {carrier.sla.compliance}%
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className="text-gray-900">{carrier.volume}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`text-sm font-medium ${carrier.trend === 'up' ? 'text-green-600' : carrier.trend === 'down' ? 'text-red-600' : 'text-gray-500'}`}>
+                                                        {carrier.trend === 'up' ? '↑' : carrier.trend === 'down' ? '↓' : '→'} {Math.abs(carrier.trendValue)}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6 mb-6">
+                            {/* Delays Detection */}
+                            <div className="bg-white rounded-2xl border border-gray-100">
+                                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                                    <h3 className="font-semibold text-gray-900">🚨 Retards détectés</h3>
+                                    <span className="text-xs text-gray-500">Temps réel</span>
+                                </div>
+                                <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
+                                    {delaysData.map(delay => (
+                                        <div key={delay.id} className={`p-4 rounded-xl border ${delay.risk === 'critical' ? 'border-red-200 bg-red-50' : delay.risk === 'high' ? 'border-orange-200 bg-orange-50' : 'border-yellow-200 bg-yellow-50'}`}>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="font-medium text-gray-900">{delay.tracking}</span>
+                                                <RiskBadge risk={delay.risk} />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <p className="text-gray-600">📦 {delay.carrier}</p>
+                                                <p className="text-gray-600">📍 {delay.destination}</p>
+                                                <p className="text-gray-600">👤 {delay.customer}</p>
+                                                <p className="text-red-600 font-medium">⏱️ +{delay.delayDays}j retard</p>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2">Dernière MàJ: il y a {delay.lastUpdate}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Weekly Trend */}
+                            <div className="bg-white rounded-2xl border border-gray-100">
+                                <div className="p-6 border-b border-gray-100">
+                                    <h3 className="font-semibold text-gray-900">📈 Tendance hebdomadaire</h3>
+                                </div>
+                                <div className="p-6">
+                                    <ResponsiveContainer width="100%" height={250}>
+                                        <BarChart data={weeklyTrend}>
+                                            <XAxis dataKey="week" axisLine={false} tickLine={false} />
+                                            <YAxis axisLine={false} tickLine={false} />
+                                            <Tooltip />
+                                            <Bar dataKey="onTime" stackId="a" fill="#00FF88" name="À l'heure" radius={[0, 0, 0, 0]} />
+                                            <Bar dataKey="delayed" stackId="a" fill="#EF4444" name="En retard" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recommendations */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                            <h3 className="font-semibold text-gray-900 mb-4">💡 Recommandations</h3>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="bg-white rounded-xl p-4">
+                                    <p className="text-sm font-medium text-gray-900 mb-2">🏆 Augmenter le volume Chronopost</p>
+                                    <p className="text-xs text-gray-600">Score de 92/100 - Négociez des tarifs préférentiels</p>
+                                </div>
+                                <div className="bg-white rounded-xl p-4">
+                                    <p className="text-sm font-medium text-gray-900 mb-2">⚠️ Surveiller Mondial Relay</p>
+                                    <p className="text-xs text-gray-600">Score de 78/100 - Envisagez une alternative pour les zones problématiques</p>
+                                </div>
+                                <div className="bg-white rounded-xl p-4">
+                                    <p className="text-sm font-medium text-gray-900 mb-2">📊 Diversification recommandée</p>
+                                    <p className="text-xs text-gray-600">Ajoutez 1-2 transporteurs pour réduire les risques</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<QoSPage />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Rapports</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-slideIn { animation: slideIn 0.3s ease-out; }
+        .animate-spin { animation: spin 1s linear infinite; }
+        .report-card { transition: all 0.2s ease; }
+        .report-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        const { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } = Recharts;
+
+        const Icons = {
+            download: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
+            calendar: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+            chart: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+            truck: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>,
+            users: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+            euro: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 15.536c-1.171 1.952-3.07 1.952-4.242 0-1.172-1.953-1.172-5.119 0-7.072 1.171-1.952 3.07-1.952 4.242 0M8 10.5h4m-4 3h4m9-1.5a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+            file: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+            refresh: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+            check: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
+        };
+
+        const COLORS = ['#00FF88', '#00D4AA', '#00B4D8', '#9B5DE5', '#F15BB5', '#FEE440'];
+
+        // Génération de données pour les rapports
+        const generateShipmentData = () => Array.from({ length: 12 }, (_, i) => ({
+            month: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][i],
+            shipments: Math.floor(Math.random() * 2000) + 500,
+            delivered: Math.floor(Math.random() * 1800) + 400,
+            returns: Math.floor(Math.random() * 100) + 20
+        }));
+
+        const generateCarrierData = () => [
+            { name: 'Colissimo', value: 2341, onTime: 94 },
+            { name: 'Chronopost', value: 1247, onTime: 97 },
+            { name: 'Mondial Relay', value: 892, onTime: 89 },
+            { name: 'DHL', value: 456, onTime: 96 },
+            { name: 'UPS', value: 234, onTime: 95 }
+        ];
+
+        const generateRevenueData = () => Array.from({ length: 12 }, (_, i) => ({
+            month: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][i],
+            revenue: Math.floor(Math.random() * 50000) + 20000,
+            shipping: Math.floor(Math.random() * 5000) + 1000
+        }));
+
+        const reportTemplates = [
+            { id: 'monthly', name: 'Rapport mensuel', icon: Icons.calendar, desc: 'Vue d\'ensemble des performances du mois', format: ['PDF', 'Excel'] },
+            { id: 'shipments', name: 'Expéditions', icon: Icons.truck, desc: 'Détail de toutes les expéditions', format: ['CSV', 'Excel'] },
+            { id: 'carriers', name: 'Transporteurs', icon: Icons.chart, desc: 'Performance par transporteur', format: ['PDF', 'Excel'] },
+            { id: 'customers', name: 'Clients', icon: Icons.users, desc: 'Analyse de la base clients', format: ['CSV', 'Excel'] },
+            { id: 'financial', name: 'Financier', icon: Icons.euro, desc: 'Coûts et revenus d\'expédition', format: ['PDF', 'Excel'] },
+            { id: 'returns', name: 'Retours', icon: Icons.refresh, desc: 'Analyse des retours', format: ['CSV', 'PDF'] },
+        ];
+
+        const scheduledReports = [
+            { id: 1, name: 'Rapport hebdomadaire', type: 'weekly', nextRun: '2024-12-02', recipients: ['team@maboutique.fr'], enabled: true },
+            { id: 2, name: 'Rapport mensuel', type: 'monthly', nextRun: '2024-12-01', recipients: ['manager@maboutique.fr', 'compta@maboutique.fr'], enabled: true },
+            { id: 3, name: 'Alertes transporteurs', type: 'daily', nextRun: '2024-11-29', recipients: ['ops@maboutique.fr'], enabled: false },
+        ];
+
+        const ReportsPage = () => {
+            const [activeTab, setActiveTab] = useState('generate');
+            const [selectedPeriod, setSelectedPeriod] = useState('month');
+            const [generating, setGenerating] = useState(null);
+            const [generated, setGenerated] = useState([]);
+
+            const shipmentData = useMemo(() => generateShipmentData(), []);
+            const carrierData = useMemo(() => generateCarrierData(), []);
+            const revenueData = useMemo(() => generateRevenueData(), []);
+
+            const handleGenerate = (reportId, format) => {
+                setGenerating(`${reportId}-${format}`);
+                setTimeout(() => {
+                    setGenerating(null);
+                    setGenerated(prev => [...prev, { id: Date.now(), reportId, format, date: new Date() }]);
+                }, 2000);
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <header className="bg-white border-b border-gray-200">
+                        <div className="max-w-7xl mx-auto px-4 py-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                        <span className="text-black font-bold">R</span>
+                                    </div>
+                                    <div>
+                                        <h1 className="font-semibold text-gray-900">Rapports</h1>
+                                        <p className="text-xs text-gray-500">Générez et planifiez vos rapports</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-7xl mx-auto px-4 py-6">
+                        {/* Tabs */}
+                        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6">
+                            {[
+                                { id: 'generate', label: 'Générer' },
+                                { id: 'scheduled', label: 'Planifiés' },
+                                { id: 'history', label: 'Historique' },
+                            ].map(tab => (
+                                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                                    className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-white shadow' : ''}`}>
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {activeTab === 'generate' && (
+                            <div className="space-y-6 animate-slideIn">
+                                {/* Period Selector */}
+                                <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
+                                    <span className="text-gray-600">{Icons.calendar}</span>
+                                    <span className="text-sm text-gray-600">Période :</span>
+                                    <div className="flex gap-2">
+                                        {[
+                                            { id: 'week', label: '7 jours' },
+                                            { id: 'month', label: '30 jours' },
+                                            { id: 'quarter', label: '3 mois' },
+                                            { id: 'year', label: '12 mois' },
+                                            { id: 'custom', label: 'Personnalisé' },
+                                        ].map(p => (
+                                            <button key={p.id} onClick={() => setSelectedPeriod(p.id)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedPeriod === p.id ? 'bg-[#00FF88] text-black' : 'bg-gray-100 hover:bg-gray-200'}`}>
+                                                {p.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Report Templates */}
+                                <div className="grid grid-cols-3 gap-4">
+                                    {reportTemplates.map(report => (
+                                        <div key={report.id} className="report-card bg-white rounded-2xl border border-gray-200 p-6">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600">
+                                                    {report.icon}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-900">{report.name}</h3>
+                                                    <p className="text-sm text-gray-500">{report.desc}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {report.format.map(format => (
+                                                    <button key={format} onClick={() => handleGenerate(report.id, format)}
+                                                        disabled={generating === `${report.id}-${format}`}
+                                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium disabled:opacity-50">
+                                                        {generating === `${report.id}-${format}` ? (
+                                                            <span className="animate-spin">{Icons.refresh}</span>
+                                                        ) : (
+                                                            Icons.download
+                                                        )}
+                                                        {format}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Preview Charts */}
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                                        <h3 className="font-semibold mb-4">Expéditions par mois</h3>
+                                        <ResponsiveContainer width="100%" height={250}>
+                                            <BarChart data={shipmentData}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                                                <YAxis tick={{ fontSize: 12 }} />
+                                                <Tooltip />
+                                                <Bar dataKey="shipments" fill="#00FF88" radius={[4, 4, 0, 0]} />
+                                                <Bar dataKey="delivered" fill="#00D4AA" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                                        <h3 className="font-semibold mb-4">Répartition transporteurs</h3>
+                                        <ResponsiveContainer width="100%" height={250}>
+                                            <PieChart>
+                                                <Pie data={carrierData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                                                    {carrierData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                                </Pie>
+                                                <Tooltip />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    <div className="bg-white rounded-2xl border border-gray-200 p-6 col-span-2">
+                                        <h3 className="font-semibold mb-4">Évolution CA & Frais d'expédition</h3>
+                                        <ResponsiveContainer width="100%" height={250}>
+                                            <LineChart data={revenueData}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                                                <YAxis tick={{ fontSize: 12 }} />
+                                                <Tooltip formatter={(value) => `${value.toLocaleString()} €`} />
+                                                <Legend />
+                                                <Line type="monotone" dataKey="revenue" name="CA" stroke="#00FF88" strokeWidth={2} dot={false} />
+                                                <Line type="monotone" dataKey="shipping" name="Frais expédition" stroke="#9B5DE5" strokeWidth={2} dot={false} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'scheduled' && (
+                            <div className="space-y-4 animate-slideIn">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-lg font-semibold">Rapports planifiés</h2>
+                                    <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#00FF88] to-[#00D4AA] text-black rounded-xl font-medium">
+                                        + Nouveau rapport planifié
+                                    </button>
+                                </div>
+
+                                {scheduledReports.map(report => (
+                                    <div key={report.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-3 h-3 rounded-full ${report.enabled ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900">{report.name}</h3>
+                                                <p className="text-sm text-gray-500">
+                                                    {report.type === 'daily' && 'Quotidien'}
+                                                    {report.type === 'weekly' && 'Hebdomadaire'}
+                                                    {report.type === 'monthly' && 'Mensuel'}
+                                                    {' • '}Prochain envoi: {new Date(report.nextRun).toLocaleDateString('fr-FR')}
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    Destinataires: {report.recipients.join(', ')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Modifier</button>
+                                            <button className={`w-12 h-6 rounded-full p-0.5 transition-colors ${report.enabled ? 'bg-[#00FF88]' : 'bg-gray-300'}`}>
+                                                <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${report.enabled ? 'translate-x-6' : ''}`} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'history' && (
+                            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden animate-slideIn">
+                                <div className="p-4 border-b border-gray-200">
+                                    <h3 className="font-semibold">Rapports générés</h3>
+                                </div>
+                                {generated.length === 0 ? (
+                                    <div className="p-12 text-center text-gray-500">
+                                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            {Icons.file}
+                                        </div>
+                                        <p>Aucun rapport généré récemment</p>
+                                        <p className="text-sm">Les rapports générés apparaîtront ici</p>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-gray-100">
+                                        {generated.slice().reverse().map(item => {
+                                            const template = reportTemplates.find(t => t.id === item.reportId);
+                                            return (
+                                                <div key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
+                                                            {Icons.check}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium">{template?.name} - {item.format}</p>
+                                                            <p className="text-sm text-gray-500">Généré le {item.date.toLocaleString('fr-FR')}</p>
+                                                        </div>
+                                                    </div>
+                                                    <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
+                                                        {Icons.download} Télécharger
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<ReportsPage />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1167 @@
+openapi: 3.0.3
+info:
+  title: Routz Logistics Platform API
+  description: |
+    API complète pour la gestion logistique multi-transporteurs.
+    
+    ## Authentification
+    Toutes les requêtes doivent inclure un header `Authorization: Bearer <token>`.
+    
+    ## Rate Limiting
+    - 1000 requêtes/heure pour le plan Standard
+    - 5000 requêtes/heure pour le plan Pro
+    - Illimité pour le plan Enterprise
+    
+    ## Webhooks
+    Configurez vos webhooks dans le dashboard pour recevoir des notifications en temps réel.
+  version: 4.0.0
+  contact:
+    name: Routz Support
+    email: api@routz.io
+    url: https://docs.routz.io
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.routz.io/v1
+    description: Production
+  - url: https://sandbox.api.routz.io/v1
+    description: Sandbox
+  - url: http://localhost:3000/v1
+    description: Local development
+
+tags:
+  - name: Shipments
+    description: Gestion des expéditions
+  - name: Orders
+    description: Gestion des commandes
+  - name: Tracking
+    description: Suivi des colis
+  - name: Labels
+    description: Génération d'étiquettes
+  - name: Returns
+    description: Gestion des retours (RMA)
+  - name: Carriers
+    description: Transporteurs et tarifs
+  - name: Warehouses
+    description: Entrepôts et stocks
+  - name: Webhooks
+    description: Configuration des webhooks
+  - name: Analytics
+    description: Statistiques et rapports
+
+paths:
+  # ==========================================
+  # SHIPMENTS
+  # ==========================================
+  /shipments:
+    get:
+      tags: [Shipments]
+      summary: Liste des expéditions
+      description: Récupère la liste des expéditions avec filtres et pagination
+      operationId: listShipments
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, shipped, in_transit, delivered, exception, returned]
+        - name: carrier
+          in: query
+          schema:
+            type: string
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Liste des expéditions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Shipment'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Shipments]
+      summary: Créer une expédition
+      description: Crée une nouvelle expédition et génère l'étiquette
+      operationId: createShipment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShipmentRequest'
+            example:
+              carrier: colissimo
+              service: standard
+              sender:
+                name: Ma Boutique
+                address1: 10 rue du Commerce
+                city: Paris
+                postalCode: "75001"
+                country: FR
+                phone: "+33123456789"
+              recipient:
+                name: Marie Dupont
+                address1: 25 avenue des Fleurs
+                city: Lyon
+                postalCode: "69001"
+                country: FR
+                phone: "+33987654321"
+                email: marie@email.com
+              parcels:
+                - weight: 2.5
+                  length: 30
+                  width: 20
+                  height: 15
+              options:
+                signature: true
+                insurance: 150
+      responses:
+        '201':
+          description: Expédition créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipments/{shipmentId}:
+    get:
+      tags: [Shipments]
+      summary: Détails d'une expédition
+      operationId: getShipment
+      parameters:
+        - $ref: '#/components/parameters/ShipmentIdParam'
+      responses:
+        '200':
+          description: Détails de l'expédition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Shipments]
+      summary: Modifier une expédition
+      operationId: updateShipment
+      parameters:
+        - $ref: '#/components/parameters/ShipmentIdParam'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShipmentRequest'
+      responses:
+        '200':
+          description: Expédition mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+
+    delete:
+      tags: [Shipments]
+      summary: Annuler une expédition
+      operationId: cancelShipment
+      parameters:
+        - $ref: '#/components/parameters/ShipmentIdParam'
+      responses:
+        '200':
+          description: Expédition annulée
+        '400':
+          description: Impossible d'annuler (déjà expédiée)
+
+  /shipments/{shipmentId}/label:
+    get:
+      tags: [Labels]
+      summary: Télécharger l'étiquette
+      operationId: getShipmentLabel
+      parameters:
+        - $ref: '#/components/parameters/ShipmentIdParam'
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [pdf, zpl, png]
+            default: pdf
+      responses:
+        '200':
+          description: Étiquette
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/zpl:
+              schema:
+                type: string
+            image/png:
+              schema:
+                type: string
+                format: binary
+
+  # ==========================================
+  # TRACKING
+  # ==========================================
+  /tracking/{trackingNumber}:
+    get:
+      tags: [Tracking]
+      summary: Suivi d'un colis
+      operationId: getTracking
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          example: 6L123456789FR
+      responses:
+        '200':
+          description: Informations de suivi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingInfo'
+              example:
+                trackingNumber: 6L123456789FR
+                carrier: colissimo
+                status: in_transit
+                statusLabel: En cours de livraison
+                estimatedDelivery: "2024-01-17"
+                events:
+                  - timestamp: "2024-01-15T14:30:00Z"
+                    status: in_transit
+                    description: Colis en cours d'acheminement
+                    location: Paris Hub
+
+  /tracking/batch:
+    post:
+      tags: [Tracking]
+      summary: Suivi de plusieurs colis
+      operationId: batchTracking
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trackingNumbers:
+                  type: array
+                  items:
+                    type: string
+                  maxItems: 100
+      responses:
+        '200':
+          description: Informations de suivi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrackingInfo'
+
+  # ==========================================
+  # ORDERS
+  # ==========================================
+  /orders:
+    get:
+      tags: [Orders]
+      summary: Liste des commandes
+      operationId: listOrders
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, shipped, delivered, cancelled]
+        - name: source
+          in: query
+          schema:
+            type: string
+            enum: [shopify, woocommerce, prestashop, api, manual]
+      responses:
+        '200':
+          description: Liste des commandes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags: [Orders]
+      summary: Créer une commande
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Commande créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /orders/{orderId}/ship:
+    post:
+      tags: [Orders]
+      summary: Expédier une commande
+      operationId: shipOrder
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                carrier:
+                  type: string
+                service:
+                  type: string
+                warehouseId:
+                  type: string
+      responses:
+        '200':
+          description: Commande expédiée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+
+  # ==========================================
+  # RETURNS
+  # ==========================================
+  /returns:
+    get:
+      tags: [Returns]
+      summary: Liste des retours
+      operationId: listReturns
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending_approval, approved, in_transit, received, inspecting, refunded, rejected]
+      responses:
+        '200':
+          description: Liste des retours
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Return'
+
+    post:
+      tags: [Returns]
+      summary: Créer une demande de retour
+      operationId: createReturn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReturnRequest'
+      responses:
+        '201':
+          description: Retour créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Return'
+
+  /returns/{returnId}/approve:
+    post:
+      tags: [Returns]
+      summary: Approuver un retour
+      operationId: approveReturn
+      parameters:
+        - name: returnId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                generateLabel:
+                  type: boolean
+                  default: true
+                carrier:
+                  type: string
+      responses:
+        '200':
+          description: Retour approuvé
+
+  /returns/{returnId}/refund:
+    post:
+      tags: [Returns]
+      summary: Initier le remboursement
+      operationId: refundReturn
+      parameters:
+        - name: returnId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                method:
+                  type: string
+                  enum: [original_payment, store_credit, bank_transfer]
+      responses:
+        '200':
+          description: Remboursement initié
+
+  # ==========================================
+  # CARRIERS
+  # ==========================================
+  /carriers:
+    get:
+      tags: [Carriers]
+      summary: Liste des transporteurs disponibles
+      operationId: listCarriers
+      responses:
+        '200':
+          description: Liste des transporteurs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Carrier'
+
+  /carriers/rates:
+    post:
+      tags: [Carriers]
+      summary: Obtenir les tarifs
+      operationId: getRates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateRequest'
+      responses:
+        '200':
+          description: Tarifs disponibles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rate'
+
+  /carriers/recommend:
+    post:
+      tags: [Carriers]
+      summary: Recommandation IA du meilleur transporteur
+      operationId: recommendCarrier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CarrierRecommendationRequest'
+      responses:
+        '200':
+          description: Recommandation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarrierRecommendation'
+
+  # ==========================================
+  # WAREHOUSES
+  # ==========================================
+  /warehouses:
+    get:
+      tags: [Warehouses]
+      summary: Liste des entrepôts
+      operationId: listWarehouses
+      responses:
+        '200':
+          description: Liste des entrepôts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Warehouse'
+
+  /warehouses/{warehouseId}/inventory:
+    get:
+      tags: [Warehouses]
+      summary: Stock d'un entrepôt
+      operationId: getWarehouseInventory
+      parameters:
+        - name: warehouseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sku
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inventaire
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryItem'
+
+  # ==========================================
+  # WEBHOOKS
+  # ==========================================
+  /webhooks:
+    get:
+      tags: [Webhooks]
+      summary: Liste des webhooks
+      operationId: listWebhooks
+      responses:
+        '200':
+          description: Liste des webhooks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Webhook'
+
+    post:
+      tags: [Webhooks]
+      summary: Créer un webhook
+      operationId: createWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWebhookRequest'
+      responses:
+        '201':
+          description: Webhook créé
+
+  # ==========================================
+  # ANALYTICS
+  # ==========================================
+  /analytics/dashboard:
+    get:
+      tags: [Analytics]
+      summary: Statistiques du dashboard
+      operationId: getDashboardStats
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+            default: 30d
+      responses:
+        '200':
+          description: Statistiques
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  /analytics/carriers:
+    get:
+      tags: [Analytics]
+      summary: Performance des transporteurs
+      operationId: getCarrierAnalytics
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            default: 30d
+      responses:
+        '200':
+          description: Performances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CarrierPerformance'
+
+# ==========================================
+# COMPONENTS
+# ==========================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        maximum: 100
+    ShipmentIdParam:
+      name: shipmentId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    Unauthorized:
+      description: Non authentifié
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ressource non trouvée
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Erreur de validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+  schemas:
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: string
+        trackingNumber:
+          type: string
+        carrier:
+          type: string
+        service:
+          type: string
+        status:
+          type: string
+          enum: [pending, shipped, in_transit, out_for_delivery, delivered, exception, returned]
+        sender:
+          $ref: '#/components/schemas/Address'
+        recipient:
+          $ref: '#/components/schemas/Address'
+        parcels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parcel'
+        labelUrl:
+          type: string
+        estimatedDelivery:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        shippedAt:
+          type: string
+          format: date-time
+        deliveredAt:
+          type: string
+          format: date-time
+
+    CreateShipmentRequest:
+      type: object
+      required: [carrier, sender, recipient, parcels]
+      properties:
+        carrier:
+          type: string
+        service:
+          type: string
+        sender:
+          $ref: '#/components/schemas/Address'
+        recipient:
+          $ref: '#/components/schemas/Address'
+        parcels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parcel'
+        reference:
+          type: string
+        options:
+          type: object
+          properties:
+            signature:
+              type: boolean
+            insurance:
+              type: number
+            saturdayDelivery:
+              type: boolean
+
+    UpdateShipmentRequest:
+      type: object
+      properties:
+        reference:
+          type: string
+        recipient:
+          $ref: '#/components/schemas/Address'
+
+    Address:
+      type: object
+      required: [name, address1, city, postalCode, country]
+      properties:
+        name:
+          type: string
+        company:
+          type: string
+        address1:
+          type: string
+        address2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+
+    Parcel:
+      type: object
+      required: [weight]
+      properties:
+        weight:
+          type: number
+          description: Poids en kg
+        length:
+          type: number
+          description: Longueur en cm
+        width:
+          type: number
+          description: Largeur en cm
+        height:
+          type: number
+          description: Hauteur en cm
+
+    TrackingInfo:
+      type: object
+      properties:
+        trackingNumber:
+          type: string
+        carrier:
+          type: string
+        status:
+          type: string
+        statusLabel:
+          type: string
+        estimatedDelivery:
+          type: string
+          format: date
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              status:
+                type: string
+              description:
+                type: string
+              location:
+                type: string
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+        orderNumber:
+          type: string
+        status:
+          type: string
+        source:
+          type: string
+        customer:
+          type: object
+        items:
+          type: array
+          items:
+            type: object
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        total:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateOrderRequest:
+      type: object
+      required: [orderNumber, customer, items, shippingAddress]
+      properties:
+        orderNumber:
+          type: string
+        customer:
+          type: object
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              sku:
+                type: string
+              name:
+                type: string
+              quantity:
+                type: integer
+              price:
+                type: number
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+
+    Return:
+      type: object
+      properties:
+        id:
+          type: string
+        orderNumber:
+          type: string
+        status:
+          type: string
+        reason:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+        refundAmount:
+          type: number
+        trackingNumber:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateReturnRequest:
+      type: object
+      required: [orderId, items, reason]
+      properties:
+        orderId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              sku:
+                type: string
+              quantity:
+                type: integer
+        reason:
+          type: string
+          enum: [SIZE_TOO_SMALL, SIZE_TOO_LARGE, WRONG_ITEM, DEFECTIVE, DAMAGED_SHIPPING, NOT_AS_DESCRIBED, CHANGED_MIND, OTHER]
+        comments:
+          type: string
+
+    Carrier:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        services:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              estimatedDays:
+                type: integer
+        countries:
+          type: array
+          items:
+            type: string
+
+    RateRequest:
+      type: object
+      required: [origin, destination, parcels]
+      properties:
+        origin:
+          $ref: '#/components/schemas/Address'
+        destination:
+          $ref: '#/components/schemas/Address'
+        parcels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parcel'
+
+    Rate:
+      type: object
+      properties:
+        carrier:
+          type: string
+        service:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        estimatedDays:
+          type: integer
+
+    CarrierRecommendationRequest:
+      type: object
+      properties:
+        origin:
+          $ref: '#/components/schemas/Address'
+        destination:
+          $ref: '#/components/schemas/Address'
+        parcels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parcel'
+        priority:
+          type: string
+          enum: [price, speed, reliability]
+
+    CarrierRecommendation:
+      type: object
+      properties:
+        recommended:
+          type: object
+          properties:
+            carrier:
+              type: string
+            service:
+              type: string
+            score:
+              type: integer
+            price:
+              type: number
+            estimatedDays:
+              type: integer
+            reasons:
+              type: array
+              items:
+                type: string
+        alternatives:
+          type: array
+          items:
+            type: object
+
+    Warehouse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+        isDefault:
+          type: boolean
+
+    InventoryItem:
+      type: object
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+        reserved:
+          type: integer
+        available:
+          type: integer
+        location:
+          type: string
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        events:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        secret:
+          type: string
+
+    CreateWebhookRequest:
+      type: object
+      required: [url, events]
+      properties:
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+            enum: [shipment.created, shipment.shipped, shipment.delivered, shipment.exception, order.created, order.shipped, return.created, return.approved, return.refunded]
+
+    DashboardStats:
+      type: object
+      properties:
+        shipmentsToday:
+          type: integer
+        shipmentsTotal:
+          type: integer
+        deliveryRate:
+          type: number
+        avgDeliveryDays:
+          type: number
+        pendingOrders:
+          type: integer
+        exceptions:
+          type: integer
+
+    CarrierPerformance:
+      type: object
+      properties:
+        carrier:
+          type: string
+        score:
+          type: integer
+        deliveryRate:
+          type: number
+        onTimeRate:
+          type: number
+        avgDeliveryDays:
+          type: number
+        volume:
+          type: integer
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+security:
+  - BearerAuth: []

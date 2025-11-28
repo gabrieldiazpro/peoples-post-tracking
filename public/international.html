@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - International & Douanes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>* { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+
+        const countries = [
+            { code: 'US', name: 'États-Unis', flag: '🇺🇸', deMinimis: 800, vatRate: 0, currency: 'USD' },
+            { code: 'GB', name: 'Royaume-Uni', flag: '🇬🇧', deMinimis: 135, vatRate: 20, currency: 'GBP' },
+            { code: 'CH', name: 'Suisse', flag: '🇨🇭', deMinimis: 65, vatRate: 7.7, currency: 'CHF' },
+            { code: 'CA', name: 'Canada', flag: '🇨🇦', deMinimis: 20, vatRate: 5, currency: 'CAD' },
+            { code: 'AU', name: 'Australie', flag: '🇦🇺', deMinimis: 1000, vatRate: 10, currency: 'AUD' },
+            { code: 'JP', name: 'Japon', flag: '🇯🇵', deMinimis: 10000, vatRate: 10, currency: 'JPY' },
+            { code: 'CN', name: 'Chine', flag: '🇨🇳', deMinimis: 50, vatRate: 13, currency: 'CNY' },
+        ];
+
+        const hsCodeSuggestions = [
+            { keyword: 'T-shirt', hsCode: '6109.10', description: 'T-shirts en bonneterie de coton', dutyRate: '12%' },
+            { keyword: 'Jeans', hsCode: '6203.42', description: 'Pantalons pour hommes, de coton', dutyRate: '8%' },
+            { keyword: 'Sneakers', hsCode: '6404.11', description: 'Chaussures de sport', dutyRate: '10%' },
+            { keyword: 'Smartphone', hsCode: '8517.12', description: 'Téléphones portables', dutyRate: '0%' },
+            { keyword: 'Parfum', hsCode: '3303.00', description: 'Parfums et eaux de toilette', dutyRate: '5%' },
+        ];
+
+        const recentDeclarations = [
+            { id: 'CUST-001', destination: 'US', value: 245.00, status: 'completed', duties: 0, taxes: 0, date: '2024-01-15' },
+            { id: 'CUST-002', destination: 'GB', value: 520.00, status: 'completed', duties: 26.00, taxes: 109.20, date: '2024-01-14' },
+            { id: 'CUST-003', destination: 'CH', value: 180.00, status: 'pending', duties: 9.00, taxes: 14.55, date: '2024-01-14' },
+        ];
+
+        const InternationalPage = () => {
+            const [selectedCountry, setSelectedCountry] = useState(null);
+            const [calculatorData, setCalculatorData] = useState({ value: '', country: '' });
+            const [calculationResult, setCalculationResult] = useState(null);
+            const [hsSearch, setHsSearch] = useState('');
+
+            const calculateDuties = () => {
+                const country = countries.find(c => c.code === calculatorData.country);
+                if (!country || !calculatorData.value) return;
+
+                const value = parseFloat(calculatorData.value);
+                
+                if (value < country.deMinimis) {
+                    setCalculationResult({ deMinimisApplied: true, duties: 0, taxes: 0, total: 0, threshold: country.deMinimis });
+                } else {
+                    const dutyRate = 0.05;
+                    const duties = value * dutyRate;
+                    const taxes = (value + duties) * (country.vatRate / 100);
+                    setCalculationResult({ deMinimisApplied: false, duties: duties.toFixed(2), taxes: taxes.toFixed(2), total: (duties + taxes).toFixed(2), dutyRate: 5, vatRate: country.vatRate });
+                }
+            };
+
+            const filteredHsCodes = hsCodeSuggestions.filter(hs => hsSearch && hs.keyword.toLowerCase().includes(hsSearch.toLowerCase()));
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+                        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                    <span className="text-black font-bold">R</span>
+                                </div>
+                                <div>
+                                    <h1 className="font-semibold text-gray-900">International & Douanes</h1>
+                                    <p className="text-xs text-gray-500">Déclarations, HS Codes, Estimation droits</p>
+                                </div>
+                            </div>
+                            <button className="px-4 py-2 bg-[#00FF88] text-black font-medium rounded-lg hover:bg-[#00D4AA]">+ Nouvelle déclaration</button>
+                        </div>
+                    </header>
+
+                    <div className="max-w-7xl mx-auto px-4 py-6">
+                        <div className="grid grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                                <p className="text-sm text-gray-500">Déclarations ce mois</p>
+                                <p className="text-2xl font-bold text-gray-900">127</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                                <p className="text-sm text-gray-500">Valeur totale</p>
+                                <p className="text-2xl font-bold text-gray-900">45,230€</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                                <p className="text-sm text-gray-500">Droits collectés</p>
+                                <p className="text-2xl font-bold text-orange-600">2,845€</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                                <p className="text-sm text-gray-500">Top destination</p>
+                                <p className="text-2xl font-bold text-gray-900">🇬🇧 UK</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-6 mb-6">
+                            {/* Calculator */}
+                            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                                <h3 className="font-semibold text-gray-900 mb-4">🧮 Calculateur de droits</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm text-gray-600 mb-1">Pays de destination</label>
+                                        <select value={calculatorData.country} onChange={e => setCalculatorData({...calculatorData, country: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00FF88]">
+                                            <option value="">Sélectionner...</option>
+                                            {countries.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-600 mb-1">Valeur (€)</label>
+                                        <input type="number" value={calculatorData.value} onChange={e => setCalculatorData({...calculatorData, value: e.target.value})}
+                                            placeholder="150.00" className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00FF88]" />
+                                    </div>
+                                    <button onClick={calculateDuties} className="w-full py-2 bg-[#00FF88] text-black font-medium rounded-lg hover:bg-[#00D4AA]">Calculer</button>
+                                    
+                                    {calculationResult && (
+                                        <div className={`p-4 rounded-xl ${calculationResult.deMinimisApplied ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
+                                            {calculationResult.deMinimisApplied ? (
+                                                <>
+                                                    <p className="font-medium text-green-700">✓ Exonération applicable</p>
+                                                    <p className="text-sm text-green-600">Sous le seuil de {calculationResult.threshold}€</p>
+                                                    <p className="text-2xl font-bold text-green-700 mt-2">0€</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="flex justify-between text-sm mb-2">
+                                                        <span>Droits ({calculationResult.dutyRate}%)</span>
+                                                        <span className="font-medium">{calculationResult.duties}€</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm mb-2">
+                                                        <span>TVA ({calculationResult.vatRate}%)</span>
+                                                        <span className="font-medium">{calculationResult.taxes}€</span>
+                                                    </div>
+                                                    <div className="flex justify-between font-bold pt-2 border-t border-orange-200">
+                                                        <span>Total</span>
+                                                        <span>{calculationResult.total}€</span>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* HS Code Finder */}
+                            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                                <h3 className="font-semibold text-gray-900 mb-4">🔍 Recherche Code HS</h3>
+                                <input type="text" value={hsSearch} onChange={e => setHsSearch(e.target.value)}
+                                    placeholder="T-shirt, Smartphone..." className="w-full px-4 py-2 border border-gray-200 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-[#00FF88]" />
+                                <div className="space-y-3">
+                                    {(hsSearch ? filteredHsCodes : hsCodeSuggestions.slice(0, 4)).map(hs => (
+                                        <div key={hs.hsCode} className="p-3 bg-gray-50 rounded-xl hover:bg-gray-100 cursor-pointer">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="font-mono font-bold text-blue-600">{hs.hsCode}</span>
+                                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">{hs.dutyRate}</span>
+                                            </div>
+                                            <p className="text-sm text-gray-600">{hs.description}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Country Info */}
+                            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                                <h3 className="font-semibold text-gray-900 mb-4">🌍 Réglementations</h3>
+                                <div className="space-y-2 max-h-80 overflow-y-auto">
+                                    {countries.map(country => (
+                                        <div key={country.code} onClick={() => setSelectedCountry(selectedCountry?.code === country.code ? null : country)}
+                                            className={`p-3 rounded-xl cursor-pointer ${selectedCountry?.code === country.code ? 'bg-[#00FF88]/10 border-2 border-[#00FF88]' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                                            <div className="flex justify-between">
+                                                <span>{country.flag} {country.name}</span>
+                                                <span className="text-xs text-gray-500">{country.currency}</span>
+                                            </div>
+                                            {selectedCountry?.code === country.code && (
+                                                <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-2 text-sm">
+                                                    <div><p className="text-gray-500">De minimis</p><p className="font-medium">{country.deMinimis} {country.currency}</p></div>
+                                                    <div><p className="text-gray-500">TVA</p><p className="font-medium">{country.vatRate}%</p></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Documents */}
+                        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
+                            <h3 className="font-semibold text-gray-900 mb-4">📄 Documents requis</h3>
+                            <div className="grid grid-cols-4 gap-4">
+                                {[
+                                    { flag: '🇬🇧', name: 'Royaume-Uni', docs: ['Facture commerciale', 'CN22/CN23', 'EORI'] },
+                                    { flag: '🇺🇸', name: 'États-Unis', docs: ['Commercial Invoice', 'Packing List', 'AES (>2500$)'] },
+                                    { flag: '🇨🇭', name: 'Suisse', docs: ['Facture commerciale', 'EUR.1'] },
+                                    { flag: '🇨🇳', name: 'Chine', docs: ['Facture', 'Packing List', 'CCC (électro)'] },
+                                ].map(c => (
+                                    <div key={c.name} className="p-4 bg-gray-50 rounded-xl">
+                                        <p className="font-medium mb-2">{c.flag} {c.name}</p>
+                                        <ul className="space-y-1 text-sm">
+                                            {c.docs.map(d => <li key={d} className="flex items-center gap-2"><span className="text-green-500">✓</span>{d}</li>)}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Recent Declarations */}
+                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                            <div className="p-6 border-b"><h3 className="font-semibold text-gray-900">📋 Déclarations récentes</h3></div>
+                            <table className="w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destination</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valeur</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Droits</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {recentDeclarations.map(d => (
+                                        <tr key={d.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 font-mono text-blue-600">{d.id}</td>
+                                            <td className="px-6 py-4">{countries.find(c => c.code === d.destination)?.flag} {countries.find(c => c.code === d.destination)?.name}</td>
+                                            <td className="px-6 py-4 font-medium">{d.value}€</td>
+                                            <td className="px-6 py-4">{(d.duties + d.taxes).toFixed(2)}€</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs ${d.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                    {d.status === 'completed' ? '✓ Complété' : '⏳ En attente'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<InternationalPage />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz API Documentation</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css">
+    <style>
+        body { margin: 0; padding: 0; }
+        .swagger-ui .topbar { display: none; }
+        .swagger-ui .info { margin: 30px 0; }
+        .swagger-ui .info .title { font-size: 2.5em; color: #1a1a1a; }
+        .swagger-ui .info .title small { background: #00FF88; color: #000; padding: 4px 12px; border-radius: 20px; font-size: 0.4em; vertical-align: middle; margin-left: 10px; }
+        .swagger-ui .scheme-container { background: #f8f9fa; padding: 20px; border-radius: 8px; }
+        .swagger-ui .btn.authorize { background: #00FF88; border-color: #00FF88; color: #000; }
+        .swagger-ui .btn.authorize:hover { background: #00D4AA; }
+        .swagger-ui .opblock.opblock-post { border-color: #00FF88; background: rgba(0,255,136,0.05); }
+        .swagger-ui .opblock.opblock-post .opblock-summary-method { background: #00FF88; color: #000; }
+        .swagger-ui .opblock.opblock-get { border-color: #3B82F6; }
+        .swagger-ui .opblock.opblock-delete { border-color: #EF4444; }
+        .header-bar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }
+        .header-bar .logo { display: flex; align-items: center; gap: 12px; }
+        .header-bar .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, #00FF88, #00D4AA); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #000; }
+        .header-bar .logo-text { color: #fff; font-size: 1.5em; font-weight: 600; }
+        .header-bar .links { display: flex; gap: 20px; }
+        .header-bar .links a { color: #9CA3AF; text-decoration: none; font-size: 0.9em; }
+        .header-bar .links a:hover { color: #00FF88; }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="logo">
+            <div class="logo-icon">R</div>
+            <span class="logo-text">Routz API</span>
+        </div>
+        <div class="links">
+            <a href="/">Dashboard</a>
+            <a href="/playground.html">Playground</a>
+            <a href="https://github.com/routz/routz-platform" target="_blank">GitHub</a>
+            <a href="mailto:support@routz.io">Support</a>
+        </div>
+    </div>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+    <script>
+        window.onload = () => {
+            window.ui = SwaggerUIBundle({
+                url: '/api/openapi.yaml',
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIBundle.SwaggerUIStandalonePreset
+                ],
+                layout: "BaseLayout",
+                defaultModelsExpandDepth: 1,
+                defaultModelExpandDepth: 1,
+                docExpansion: 'list',
+                filter: true,
+                showExtensions: true,
+                showCommonExtensions: true,
+                syntaxHighlight: {
+                    activate: true,
+                    theme: 'monokai'
+                },
+                tryItOutEnabled: true,
+                requestInterceptor: (req) => {
+                    // Auto-add auth header if token in localStorage
+                    const token = localStorage.getItem('routz_api_token');
+                    if (token && !req.headers.Authorization) {
+                        req.headers.Authorization = `Bearer ${token}`;
+                    }
+                    return req;
+                },
+                onComplete: () => {
+                    // Custom styling after load
+                    document.querySelector('.swagger-ui .info .title').innerHTML += '<small>v4.0</small>';
+                }
+            });
+        };
+    </script>
+</body>
+</html>

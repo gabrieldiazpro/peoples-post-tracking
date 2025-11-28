@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Support Client</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        @keyframes typing { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .typing-dot { animation: typing 1.4s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        const mockChats = [
+            { id: 'CHAT-001', customer: 'Marie Dupont', email: 'marie.d@email.com', status: 'active', priority: 'high', lastMessage: 'Mon colis n\'est toujours pas arrivé...', unread: 2, assignedTo: 'Sophie', context: { orderId: 'ORD-78542', trackingNumber: '6L123456789FR' }, createdAt: '10:30' },
+            { id: 'CHAT-002', customer: 'Jean Martin', email: 'j.martin@email.com', status: 'waiting', priority: 'normal', lastMessage: 'Bonjour, je souhaite faire un retour', unread: 1, assignedTo: null, context: { orderId: 'ORD-78490' }, createdAt: '10:15' },
+            { id: 'CHAT-003', customer: 'Sophie Bernard', email: 's.bernard@email.com', status: 'active', priority: 'normal', lastMessage: 'Merci pour votre aide !', unread: 0, assignedTo: 'Sophie', context: {}, createdAt: '09:45' },
+            { id: 'CHAT-004', customer: 'Pierre Leroy', email: 'p.leroy@email.com', status: 'resolved', priority: 'low', lastMessage: 'Parfait, problème résolu', unread: 0, assignedTo: 'Marc', context: { orderId: 'ORD-78156' }, createdAt: 'Hier' },
+        ];
+
+        const mockMessages = {
+            'CHAT-001': [
+                { id: 1, type: 'customer', content: 'Bonjour, je n\'ai toujours pas reçu mon colis commandé il y a 5 jours.', time: '10:30' },
+                { id: 2, type: 'bot', content: 'Bonjour Marie ! 👋\n\nJe comprends votre inquiétude. Laissez-moi vérifier le statut de votre commande ORD-78542.\n\nVotre colis 6L123456789FR est actuellement en cours de livraison.', time: '10:30' },
+                { id: 3, type: 'customer', content: 'Mais ça fait déjà 2 jours qu\'il est "en cours de livraison" !', time: '10:32' },
+                { id: 4, type: 'agent', content: 'Bonjour Marie, je suis Sophie du service client. Je vois effectivement un retard sur votre livraison. Je contacte le transporteur immédiatement.', time: '10:35', agentName: 'Sophie' },
+            ],
+            'CHAT-002': [
+                { id: 1, type: 'customer', content: 'Bonjour, je souhaite faire un retour', time: '10:15' },
+                { id: 2, type: 'bot', content: 'Bonjour ! 👋\n\nPour effectuer un retour, vous pouvez :\n1. Accéder à votre espace client\n2. Sélectionner la commande concernée\n3. Cliquer sur "Demander un retour"\n\nSouhaitez-vous que je vous envoie le lien direct ?', time: '10:15' },
+            ]
+        };
+
+        const cannedResponses = [
+            { shortcut: '/bonjour', title: 'Salutation', content: 'Bonjour ! Je suis {agent_name}, comment puis-je vous aider aujourd\'hui ?' },
+            { shortcut: '/suivi', title: 'Info suivi', content: 'Votre colis est actuellement en cours de livraison. Vous pouvez suivre son acheminement ici : {tracking_url}' },
+            { shortcut: '/retard', title: 'Excuse retard', content: 'Je suis sincèrement désolé pour ce retard. Notre équipe fait tout son possible pour que votre colis vous parvienne au plus vite.' },
+            { shortcut: '/retour', title: 'Processus retour', content: 'Pour effectuer votre retour :\n1. Connectez-vous à votre espace client\n2. Accédez à "Mes commandes"\n3. Cliquez sur "Demander un retour"' },
+            { shortcut: '/fin', title: 'Clôture', content: 'Y a-t-il autre chose que je puisse faire pour vous ? Si non, je vous souhaite une excellente journée !' },
+        ];
+
+        const SupportPage = () => {
+            const [chats, setChats] = useState(mockChats);
+            const [selectedChat, setSelectedChat] = useState(mockChats[0]);
+            const [messages, setMessages] = useState(mockMessages);
+            const [newMessage, setNewMessage] = useState('');
+            const [showCanned, setShowCanned] = useState(false);
+            const [filter, setFilter] = useState('all');
+            const [isTyping, setIsTyping] = useState(false);
+            const messagesEndRef = useRef(null);
+
+            const currentMessages = messages[selectedChat?.id] || [];
+
+            useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [currentMessages]);
+
+            const handleSend = () => {
+                if (!newMessage.trim()) return;
+
+                const newMsg = {
+                    id: Date.now(),
+                    type: 'agent',
+                    content: newMessage,
+                    time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                    agentName: 'Sophie'
+                };
+
+                setMessages(prev => ({
+                    ...prev,
+                    [selectedChat.id]: [...(prev[selectedChat.id] || []), newMsg]
+                }));
+                setNewMessage('');
+
+                // Simulate customer typing
+                setTimeout(() => setIsTyping(true), 1000);
+                setTimeout(() => {
+                    setIsTyping(false);
+                    const customerReply = {
+                        id: Date.now() + 1,
+                        type: 'customer',
+                        content: 'D\'accord, merci pour votre aide !',
+                        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                    };
+                    setMessages(prev => ({
+                        ...prev,
+                        [selectedChat.id]: [...(prev[selectedChat.id] || []), customerReply]
+                    }));
+                }, 3000);
+            };
+
+            const handleCannedSelect = (response) => {
+                setNewMessage(response.content.replace('{agent_name}', 'Sophie'));
+                setShowCanned(false);
+            };
+
+            const filteredChats = chats.filter(c => {
+                if (filter === 'all') return true;
+                if (filter === 'waiting') return c.status === 'waiting';
+                if (filter === 'active') return c.status === 'active';
+                if (filter === 'mine') return c.assignedTo === 'Sophie';
+                return true;
+            });
+
+            const StatusBadge = ({ status }) => {
+                const config = {
+                    waiting: { color: 'bg-yellow-100 text-yellow-700', label: 'En attente', dot: 'bg-yellow-400' },
+                    active: { color: 'bg-green-100 text-green-700', label: 'Actif', dot: 'bg-green-400 animate-pulse' },
+                    resolved: { color: 'bg-gray-100 text-gray-600', label: 'Résolu', dot: 'bg-gray-400' }
+                };
+                const c = config[status] || config.waiting;
+                return (
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${c.color}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
+                        {c.label}
+                    </span>
+                );
+            };
+
+            return (
+                <div className="h-screen flex flex-col bg-gray-100">
+                    {/* Header */}
+                    <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                <span className="text-black font-bold">R</span>
+                            </div>
+                            <div>
+                                <h1 className="font-semibold text-gray-900">Support Client</h1>
+                                <p className="text-xs text-gray-500">Chat & Tickets</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /> En ligne</span>
+                                <span className="text-gray-300">|</span>
+                                <span className="text-gray-600">{chats.filter(c => c.status === 'waiting').length} en attente</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="flex-1 flex overflow-hidden">
+                        {/* Chat List */}
+                        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+                            <div className="p-3 border-b border-gray-100">
+                                <div className="flex gap-2">
+                                    {['all', 'waiting', 'active', 'mine'].map(f => (
+                                        <button key={f} onClick={() => setFilter(f)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === f ? 'bg-[#00FF88] text-black' : 'bg-gray-100 text-gray-600'}`}>
+                                            {f === 'all' ? 'Tous' : f === 'waiting' ? '⏳ Attente' : f === 'active' ? '💬 Actifs' : '👤 Mes chats'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                {filteredChats.map(chat => (
+                                    <div key={chat.id} onClick={() => setSelectedChat(chat)}
+                                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selectedChat?.id === chat.id ? 'bg-blue-50 border-l-4 border-l-[#00FF88]' : ''}`}>
+                                        <div className="flex items-start justify-between mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                                    {chat.customer.split(' ').map(n => n[0]).join('')}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-sm text-gray-900">{chat.customer}</p>
+                                                    <StatusBadge status={chat.status} />
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-gray-400">{chat.createdAt}</p>
+                                                {chat.unread > 0 && (
+                                                    <span className="inline-flex items-center justify-center w-5 h-5 bg-[#00FF88] text-black text-xs font-bold rounded-full mt-1">
+                                                        {chat.unread}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-gray-600 truncate mt-2">{chat.lastMessage}</p>
+                                        {chat.context.orderId && (
+                                            <p className="text-xs text-blue-600 mt-1">📦 {chat.context.orderId}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Chat Window */}
+                        <div className="flex-1 flex flex-col bg-gray-50">
+                            {selectedChat ? (
+                                <>
+                                    {/* Chat Header */}
+                                    <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                                                {selectedChat.customer.split(' ').map(n => n[0]).join('')}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-900">{selectedChat.customer}</p>
+                                                <p className="text-xs text-gray-500">{selectedChat.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {selectedChat.context.orderId && (
+                                                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs">
+                                                    📦 {selectedChat.context.orderId}
+                                                </span>
+                                            )}
+                                            {selectedChat.context.trackingNumber && (
+                                                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs">
+                                                    🚚 {selectedChat.context.trackingNumber}
+                                                </span>
+                                            )}
+                                            <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-500">⋮</button>
+                                        </div>
+                                    </div>
+
+                                    {/* Messages */}
+                                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                        {currentMessages.map(msg => (
+                                            <div key={msg.id} className={`flex ${msg.type === 'customer' ? 'justify-start' : 'justify-end'}`}>
+                                                <div className={`max-w-md rounded-2xl px-4 py-3 ${
+                                                    msg.type === 'customer' ? 'bg-white border border-gray-200' :
+                                                    msg.type === 'bot' ? 'bg-purple-100 text-purple-900' :
+                                                    'bg-[#00FF88] text-black'
+                                                }`}>
+                                                    {msg.type === 'agent' && (
+                                                        <p className="text-xs font-medium mb-1">{msg.agentName}</p>
+                                                    )}
+                                                    {msg.type === 'bot' && (
+                                                        <p className="text-xs font-medium mb-1">🤖 Assistant Routz</p>
+                                                    )}
+                                                    <p className="text-sm whitespace-pre-line">{msg.content}</p>
+                                                    <p className={`text-xs mt-1 ${msg.type === 'customer' ? 'text-gray-400' : 'opacity-70'}`}>{msg.time}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {isTyping && (
+                                            <div className="flex justify-start">
+                                                <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-1">
+                                                    <span className="typing-dot w-2 h-2 bg-gray-400 rounded-full" />
+                                                    <span className="typing-dot w-2 h-2 bg-gray-400 rounded-full" />
+                                                    <span className="typing-dot w-2 h-2 bg-gray-400 rounded-full" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div ref={messagesEndRef} />
+                                    </div>
+
+                                    {/* Input */}
+                                    <div className="bg-white border-t border-gray-200 p-4">
+                                        {showCanned && (
+                                            <div className="mb-3 p-3 bg-gray-50 rounded-xl">
+                                                <p className="text-xs font-medium text-gray-500 mb-2">Réponses rapides</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {cannedResponses.map(r => (
+                                                        <button key={r.shortcut} onClick={() => handleCannedSelect(r)}
+                                                            className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs hover:border-[#00FF88]">
+                                                            <span className="font-mono text-gray-400">{r.shortcut}</span>
+                                                            <span className="ml-2 text-gray-700">{r.title}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-3">
+                                            <button onClick={() => setShowCanned(!showCanned)}
+                                                className={`p-2 rounded-lg ${showCanned ? 'bg-[#00FF88] text-black' : 'hover:bg-gray-100 text-gray-500'}`}>
+                                                ⚡
+                                            </button>
+                                            <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && handleSend()}
+                                                placeholder="Tapez votre message..."
+                                                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00FF88] focus:border-transparent" />
+                                            <button onClick={handleSend}
+                                                className="px-4 py-2 bg-[#00FF88] text-black font-medium rounded-xl hover:bg-[#00D4AA]">
+                                                Envoyer
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex-1 flex items-center justify-center text-gray-500">
+                                    Sélectionnez une conversation
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Customer Info Panel */}
+                        {selectedChat && (
+                            <div className="w-72 bg-white border-l border-gray-200 p-4 overflow-y-auto">
+                                <h3 className="font-semibold text-gray-900 mb-4">Informations client</h3>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Email</p>
+                                        <p className="text-sm text-gray-900">{selectedChat.email}</p>
+                                    </div>
+                                    
+                                    {selectedChat.context.orderId && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Commande</p>
+                                            <a href="#" className="text-sm text-blue-600 hover:underline">{selectedChat.context.orderId}</a>
+                                        </div>
+                                    )}
+                                    
+                                    {selectedChat.context.trackingNumber && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Suivi</p>
+                                            <a href="#" className="text-sm text-blue-600 hover:underline">{selectedChat.context.trackingNumber}</a>
+                                        </div>
+                                    )}
+
+                                    <div className="pt-4 border-t border-gray-100">
+                                        <p className="text-xs text-gray-500 mb-2">Actions rapides</p>
+                                        <div className="space-y-2">
+                                            <button className="w-full px-3 py-2 text-left text-sm bg-gray-50 hover:bg-gray-100 rounded-lg">
+                                                📦 Voir la commande
+                                            </button>
+                                            <button className="w-full px-3 py-2 text-left text-sm bg-gray-50 hover:bg-gray-100 rounded-lg">
+                                                🚚 Suivi colis
+                                            </button>
+                                            <button className="w-full px-3 py-2 text-left text-sm bg-gray-50 hover:bg-gray-100 rounded-lg">
+                                                ↩️ Créer un retour
+                                            </button>
+                                            <button className="w-full px-3 py-2 text-left text-sm bg-gray-50 hover:bg-gray-100 rounded-lg">
+                                                💰 Remboursement
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-gray-100">
+                                        <button className="w-full px-3 py-2 text-sm text-green-700 bg-green-50 hover:bg-green-100 rounded-lg font-medium">
+                                            ✓ Marquer comme résolu
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<SupportPage />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Entrepôts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slideIn { animation: slideIn 0.3s ease-out; }
+        .warehouse-card { transition: all 0.2s ease; }
+        .warehouse-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        const Icons = {
+            warehouse: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
+            plus: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
+            mapPin: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
+            cube: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>,
+            truck: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>,
+            alert: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+            edit: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+            x: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+            check: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
+        };
+
+        const warehouses = [
+            {
+                id: 'wh_001',
+                name: 'Entrepôt Paris Nord',
+                code: 'PAR-N',
+                type: 'fulfillment',
+                status: 'active',
+                address: { city: 'Roissy-en-France', postalCode: '95700', country: 'FR' },
+                stats: { products: 1247, orders: 89, lowStock: 12, carriers: ['Colissimo', 'Chronopost', 'DHL'] },
+                priority: 1,
+                utilization: 78
+            },
+            {
+                id: 'wh_002',
+                name: 'Entrepôt Lyon',
+                code: 'LYO',
+                type: 'fulfillment',
+                status: 'active',
+                address: { city: 'Saint-Priest', postalCode: '69800', country: 'FR' },
+                stats: { products: 892, orders: 45, lowStock: 5, carriers: ['Colissimo', 'Mondial Relay'] },
+                priority: 2,
+                utilization: 54
+            },
+            {
+                id: 'wh_003',
+                name: 'Point de vente Marseille',
+                code: 'MRS-S',
+                type: 'store',
+                status: 'active',
+                address: { city: 'Marseille', postalCode: '13001', country: 'FR' },
+                stats: { products: 234, orders: 12, lowStock: 3, carriers: ['Colissimo'] },
+                priority: 3,
+                utilization: 45
+            },
+            {
+                id: 'wh_004',
+                name: 'Centre retours',
+                code: 'RET-01',
+                type: 'return',
+                status: 'active',
+                address: { city: 'Lille', postalCode: '59000', country: 'FR' },
+                stats: { products: 156, orders: 0, lowStock: 0, carriers: [] },
+                priority: 4,
+                utilization: 23
+            },
+        ];
+
+        const typeConfig = {
+            fulfillment: { label: 'Fulfillment', color: 'bg-blue-100 text-blue-700', icon: '📦' },
+            store: { label: 'Point de vente', color: 'bg-purple-100 text-purple-700', icon: '🏪' },
+            return: { label: 'Centre retours', color: 'bg-orange-100 text-orange-700', icon: '↩️' },
+            dropship: { label: 'Dropship', color: 'bg-teal-100 text-teal-700', icon: '🚚' },
+        };
+
+        const WarehousesPage = () => {
+            const [selectedWarehouse, setSelectedWarehouse] = useState(null);
+            const [showCreateModal, setShowCreateModal] = useState(false);
+            const [activeTab, setActiveTab] = useState('overview');
+
+            const totalStats = useMemo(() => ({
+                warehouses: warehouses.length,
+                products: warehouses.reduce((s, w) => s + w.stats.products, 0),
+                orders: warehouses.reduce((s, w) => s + w.stats.orders, 0),
+                lowStock: warehouses.reduce((s, w) => s + w.stats.lowStock, 0),
+            }), []);
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <header className="bg-white border-b border-gray-200">
+                        <div className="max-w-7xl mx-auto px-4 py-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                        <span className="text-black font-bold">R</span>
+                                    </div>
+                                    <div>
+                                        <h1 className="font-semibold text-gray-900">Entrepôts</h1>
+                                        <p className="text-xs text-gray-500">{warehouses.length} sites actifs</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowCreateModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#00FF88] to-[#00D4AA] text-black rounded-xl font-medium">
+                                    {Icons.plus} Nouvel entrepôt
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-7xl mx-auto px-4 py-6">
+                        {/* Global Stats */}
+                        <div className="grid grid-cols-4 gap-4 mb-6">
+                            {[
+                                { label: 'Entrepôts', value: totalStats.warehouses, icon: '🏭', color: 'text-blue-600' },
+                                { label: 'Produits', value: totalStats.products.toLocaleString(), icon: '📦', color: 'text-green-600' },
+                                { label: 'Commandes en cours', value: totalStats.orders, icon: '🚚', color: 'text-purple-600' },
+                                { label: 'Stock faible', value: totalStats.lowStock, icon: '⚠️', color: 'text-orange-600' },
+                            ].map((stat, i) => (
+                                <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-slideIn" style={{ animationDelay: `${i * 0.05}s` }}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-xl">{stat.icon}</span>
+                                        <span className="text-sm text-gray-500">{stat.label}</span>
+                                    </div>
+                                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Warehouse Cards */}
+                        <div className="grid grid-cols-2 gap-6">
+                            {warehouses.map((warehouse, i) => {
+                                const type = typeConfig[warehouse.type];
+                                return (
+                                    <div key={warehouse.id}
+                                        onClick={() => setSelectedWarehouse(warehouse)}
+                                        className="warehouse-card bg-white rounded-2xl border border-gray-200 p-6 cursor-pointer animate-slideIn"
+                                        style={{ animationDelay: `${i * 0.1}s` }}>
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-2xl">{type.icon}</span>
+                                                    <h3 className="font-semibold text-gray-900">{warehouse.name}</h3>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded">{warehouse.code}</span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${type.color}`}>{type.label}</span>
+                                                </div>
+                                            </div>
+                                            <div className={`w-3 h-3 rounded-full ${warehouse.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                        </div>
+
+                                        <div className="flex items-center gap-1 text-sm text-gray-500 mb-4">
+                                            {Icons.mapPin}
+                                            <span>{warehouse.address.city}, {warehouse.address.postalCode}</span>
+                                        </div>
+
+                                        {/* Stats */}
+                                        <div className="grid grid-cols-3 gap-4 mb-4">
+                                            <div className="bg-gray-50 rounded-lg p-3 text-center">
+                                                <p className="text-lg font-bold text-gray-900">{warehouse.stats.products}</p>
+                                                <p className="text-xs text-gray-500">Produits</p>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-lg p-3 text-center">
+                                                <p className="text-lg font-bold text-gray-900">{warehouse.stats.orders}</p>
+                                                <p className="text-xs text-gray-500">Commandes</p>
+                                            </div>
+                                            <div className={`rounded-lg p-3 text-center ${warehouse.stats.lowStock > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}>
+                                                <p className={`text-lg font-bold ${warehouse.stats.lowStock > 0 ? 'text-orange-600' : 'text-gray-900'}`}>
+                                                    {warehouse.stats.lowStock}
+                                                </p>
+                                                <p className="text-xs text-gray-500">Stock faible</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Utilization Bar */}
+                                        <div className="mb-4">
+                                            <div className="flex justify-between text-xs mb-1">
+                                                <span className="text-gray-500">Utilisation capacité</span>
+                                                <span className={`font-medium ${warehouse.utilization > 80 ? 'text-orange-600' : 'text-gray-900'}`}>
+                                                    {warehouse.utilization}%
+                                                </span>
+                                            </div>
+                                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full transition-all ${warehouse.utilization > 80 ? 'bg-orange-500' : 'bg-[#00FF88]'}`}
+                                                    style={{ width: `${warehouse.utilization}%` }} />
+                                            </div>
+                                        </div>
+
+                                        {/* Carriers */}
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-xs text-gray-500">Transporteurs:</span>
+                                            {warehouse.stats.carriers.map((carrier, ci) => (
+                                                <span key={ci} className="text-xs bg-gray-100 px-2 py-0.5 rounded">{carrier}</span>
+                                            ))}
+                                            {warehouse.stats.carriers.length === 0 && (
+                                                <span className="text-xs text-gray-400">Aucun</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </main>
+
+                    {/* Warehouse Detail Sidebar */}
+                    {selectedWarehouse && (
+                        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedWarehouse(null)}>
+                            <div className="absolute inset-0 bg-black/30" />
+                            <div className="relative w-full max-w-xl bg-white h-full overflow-y-auto animate-slideIn" onClick={e => e.stopPropagation()}>
+                                <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+                                    <div>
+                                        <h2 className="font-semibold text-lg">{selectedWarehouse.name}</h2>
+                                        <span className="text-sm text-gray-500 font-mono">{selectedWarehouse.code}</span>
+                                    </div>
+                                    <button onClick={() => setSelectedWarehouse(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                                        {Icons.x}
+                                    </button>
+                                </div>
+
+                                {/* Tabs */}
+                                <div className="px-6 pt-4">
+                                    <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+                                        {['overview', 'inventory', 'settings'].map(tab => (
+                                            <button key={tab} onClick={() => setActiveTab(tab)}
+                                                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium ${activeTab === tab ? 'bg-white shadow' : ''}`}>
+                                                {tab === 'overview' && 'Vue d\'ensemble'}
+                                                {tab === 'inventory' && 'Inventaire'}
+                                                {tab === 'settings' && 'Paramètres'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="p-6">
+                                    {activeTab === 'overview' && (
+                                        <div className="space-y-6">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-blue-50 rounded-xl p-4 text-center">
+                                                    <p className="text-3xl font-bold text-blue-600">{selectedWarehouse.stats.products}</p>
+                                                    <p className="text-sm text-blue-600">Produits en stock</p>
+                                                </div>
+                                                <div className="bg-green-50 rounded-xl p-4 text-center">
+                                                    <p className="text-3xl font-bold text-green-600">{selectedWarehouse.stats.orders}</p>
+                                                    <p className="text-sm text-green-600">Commandes à traiter</p>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <h3 className="font-semibold mb-3">Adresse</h3>
+                                                <div className="bg-gray-50 rounded-xl p-4">
+                                                    <p className="font-medium">{selectedWarehouse.name}</p>
+                                                    <p className="text-gray-600">{selectedWarehouse.address.postalCode} {selectedWarehouse.address.city}</p>
+                                                    <p className="text-gray-600">France</p>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <h3 className="font-semibold mb-3">Transporteurs actifs</h3>
+                                                <div className="space-y-2">
+                                                    {selectedWarehouse.stats.carriers.map((carrier, i) => (
+                                                        <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                                                            <span className="font-medium">{carrier}</span>
+                                                            <span className="text-green-600">{Icons.check}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {selectedWarehouse.stats.lowStock > 0 && (
+                                                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                                                    <div className="flex items-center gap-2 text-orange-600 mb-2">
+                                                        {Icons.alert}
+                                                        <span className="font-semibold">Alertes stock</span>
+                                                    </div>
+                                                    <p className="text-sm text-orange-700">
+                                                        {selectedWarehouse.stats.lowStock} produits en stock faible nécessitent un réapprovisionnement.
+                                                    </p>
+                                                    <button className="mt-3 text-sm font-medium text-orange-600 hover:underline">
+                                                        Voir les produits →
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'inventory' && (
+                                        <div className="space-y-4">
+                                            <div className="relative">
+                                                <input type="text" placeholder="Rechercher un produit..."
+                                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl" />
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                {[
+                                                    { sku: 'TSH-BIO-001', name: 'T-shirt Bio Blanc', qty: 145, location: 'A-01-02' },
+                                                    { sku: 'JEA-SLM-002', name: 'Jean Slim Noir', qty: 89, location: 'B-02-15' },
+                                                    { sku: 'SNK-RUN-003', name: 'Sneakers Running', qty: 12, location: 'C-03-08', lowStock: true },
+                                                    { sku: 'VES-WIN-004', name: 'Veste Winter', qty: 56, location: 'D-01-22' },
+                                                ].map((item, i) => (
+                                                    <div key={i} className={`flex items-center justify-between p-4 rounded-xl ${item.lowStock ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50'}`}>
+                                                        <div>
+                                                            <p className="font-medium">{item.name}</p>
+                                                            <p className="text-sm text-gray-500">{item.sku} • {item.location}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className={`text-lg font-bold ${item.lowStock ? 'text-orange-600' : ''}`}>{item.qty}</p>
+                                                            <p className="text-xs text-gray-500">en stock</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'settings' && (
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2">Priorité</label>
+                                                <select className="w-full px-4 py-2.5 border border-gray-200 rounded-xl">
+                                                    <option value="1">1 - Haute (principal)</option>
+                                                    <option value="2">2 - Normale</option>
+                                                    <option value="3">3 - Basse</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2">Heure limite commandes</label>
+                                                <input type="time" defaultValue="16:00" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl" />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2">Jours d'expédition</label>
+                                                <div className="flex gap-2">
+                                                    {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => (
+                                                        <button key={i} className={`w-10 h-10 rounded-lg font-medium ${i < 5 ? 'bg-[#00FF88] text-black' : 'bg-gray-100 text-gray-400'}`}>
+                                                            {day}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-4 border-t">
+                                                <button className="w-full py-3 bg-gradient-to-r from-[#00FF88] to-[#00D4AA] text-black font-semibold rounded-xl">
+                                                    Enregistrer les modifications
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Create Modal */}
+                    {showCreateModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowCreateModal(false)}>
+                            <div className="absolute inset-0 bg-black/30" />
+                            <div className="relative bg-white rounded-2xl w-full max-w-lg p-6 animate-slideIn" onClick={e => e.stopPropagation()}>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-bold">Nouvel entrepôt</h2>
+                                    <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">{Icons.x}</button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Nom</label>
+                                        <input type="text" placeholder="Ex: Entrepôt Paris Est" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Code</label>
+                                            <input type="text" placeholder="PAR-E" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Type</label>
+                                            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-xl">
+                                                <option value="fulfillment">Fulfillment</option>
+                                                <option value="store">Point de vente</option>
+                                                <option value="return">Centre retours</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Adresse</label>
+                                        <input type="text" placeholder="Adresse complète" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Ville</label>
+                                            <input type="text" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Code postal</label>
+                                            <input type="text" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 mt-6">
+                                    <button onClick={() => setShowCreateModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl">
+                                        Annuler
+                                    </button>
+                                    <button className="flex-1 py-3 bg-gradient-to-r from-[#00FF88] to-[#00D4AA] text-black font-semibold rounded-xl">
+                                        Créer l'entrepôt
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<WarehousesPage />);
+    </script>
+</body>
+</html>

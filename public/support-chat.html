@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Support Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slideIn { animation: slideIn 0.3s ease-out; }
+        @keyframes typing { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
+        .typing-dot { animation: typing 1.4s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const mockConversations = [
+            { id: 'CONV-001', customer: 'Marie Dupont', email: 'marie@email.com', subject: 'Suivi colis', status: 'open', unread: 2, lastMessage: 'Où est mon colis ?', lastMessageAt: '10:30', priority: 'normal', channel: 'widget' },
+            { id: 'CONV-002', customer: 'Jean Martin', email: 'jean@email.com', subject: 'Retour article', status: 'pending', unread: 0, lastMessage: 'Je voudrais retourner...', lastMessageAt: '10:15', priority: 'high', channel: 'email' },
+            { id: 'CONV-003', customer: 'Sophie Bernard', email: 'sophie@email.com', subject: 'Réclamation', status: 'open', unread: 1, lastMessage: 'Mon colis est endommagé', lastMessageAt: '09:45', priority: 'urgent', channel: 'widget' }
+        ];
+
+        const mockMessages = {
+            'CONV-001': [
+                { id: 1, sender: 'bot', content: 'Bonjour Marie ! 👋 Je suis l\'assistant Routz. Comment puis-je vous aider ?', time: '10:25', type: 'text' },
+                { id: 2, sender: 'customer', content: 'Bonjour, je voudrais savoir où est mon colis', time: '10:28', type: 'text' },
+                { id: 3, sender: 'bot', content: 'Je vais vérifier pour vous. Pouvez-vous me donner votre numéro de commande ?', time: '10:28', type: 'text', quickReplies: ['ORD-78234', 'Je ne l\'ai pas'] },
+                { id: 4, sender: 'customer', content: 'ORD-78234', time: '10:30', type: 'text' },
+                { id: 5, sender: 'bot', content: '🚚 Votre colis est en cours de livraison ! Il devrait arriver aujourd\'hui.', time: '10:30', type: 'text', shipmentCard: { trackingNumber: '6L123456789FR', carrier: 'Colissimo', status: 'out_for_delivery', eta: 'Aujourd\'hui' } }
+            ],
+            'CONV-002': [
+                { id: 1, sender: 'customer', content: 'Je voudrais retourner un article', time: '10:10', type: 'text' },
+                { id: 2, sender: 'bot', content: 'Je peux vous aider avec votre retour. Quel est le motif ?', time: '10:12', type: 'text', quickReplies: ['Taille incorrecte', 'Article défectueux', 'Changement d\'avis'] }
+            ],
+            'CONV-003': [
+                { id: 1, sender: 'customer', content: 'Mon colis est arrivé endommagé !', time: '09:40', type: 'text' },
+                { id: 2, sender: 'bot', content: 'Je suis vraiment désolé 😔 Pouvez-vous m\'envoyer des photos des dommages ?', time: '09:42', type: 'text' },
+                { id: 3, sender: 'customer', content: '[Photo jointe]', time: '09:45', type: 'image' }
+            ]
+        };
+
+        const cannedResponses = [
+            { id: 'greeting', title: '👋 Salutation', content: 'Bonjour ! Comment puis-je vous aider aujourd\'hui ?' },
+            { id: 'tracking', title: '📦 Info suivi', content: 'Votre colis est suivi avec le numéro {tracking}. Vous pouvez le suivre sur le site du transporteur.' },
+            { id: 'delay', title: '⏰ Excuse retard', content: 'Je suis désolé pour ce retard. Nous faisons tout notre possible pour vous livrer rapidement.' },
+            { id: 'return', title: '↩️ Instructions retour', content: 'Pour retourner votre article : 1) Emballez-le 2) Imprimez l\'étiquette 3) Déposez en point relais' },
+            { id: 'closing', title: '✅ Clôture', content: 'Y a-t-il autre chose que je puisse faire pour vous ? Bonne journée !' }
+        ];
+
+        const LiveChatPage = () => {
+            const [conversations, setConversations] = useState(mockConversations);
+            const [selectedConv, setSelectedConv] = useState(mockConversations[0]);
+            const [messages, setMessages] = useState(mockMessages);
+            const [newMessage, setNewMessage] = useState('');
+            const [isTyping, setIsTyping] = useState(false);
+            const [showCanned, setShowCanned] = useState(false);
+            const [filter, setFilter] = useState('all');
+            const messagesEndRef = useRef(null);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            useEffect(() => {
+                scrollToBottom();
+            }, [messages, selectedConv]);
+
+            const sendMessage = (content) => {
+                if (!content.trim()) return;
+
+                const newMsg = {
+                    id: Date.now(),
+                    sender: 'agent',
+                    content: content.trim(),
+                    time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                    type: 'text'
+                };
+
+                setMessages(prev => ({
+                    ...prev,
+                    [selectedConv.id]: [...(prev[selectedConv.id] || []), newMsg]
+                }));
+                setNewMessage('');
+                setShowCanned(false);
+            };
+
+            const handleQuickReply = (reply) => {
+                // Simuler réponse client
+                const clientMsg = {
+                    id: Date.now(),
+                    sender: 'customer',
+                    content: reply,
+                    time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                    type: 'text'
+                };
+
+                setMessages(prev => ({
+                    ...prev,
+                    [selectedConv.id]: [...(prev[selectedConv.id] || []), clientMsg]
+                }));
+
+                // Simuler bot typing
+                setIsTyping(true);
+                setTimeout(() => {
+                    setIsTyping(false);
+                    const botMsg = {
+                        id: Date.now() + 1,
+                        sender: 'bot',
+                        content: 'Merci ! Je traite votre demande...',
+                        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                        type: 'text'
+                    };
+                    setMessages(prev => ({
+                        ...prev,
+                        [selectedConv.id]: [...(prev[selectedConv.id] || []), botMsg]
+                    }));
+                }, 1500);
+            };
+
+            const resolveConversation = () => {
+                setConversations(prev => prev.map(c => 
+                    c.id === selectedConv.id ? { ...c, status: 'resolved' } : c
+                ));
+            };
+
+            const filteredConversations = conversations.filter(c => {
+                if (filter === 'all') return true;
+                return c.status === filter;
+            });
+
+            const currentMessages = messages[selectedConv?.id] || [];
+
+            return (
+                <div className="h-screen flex bg-gray-100">
+                    {/* Sidebar - Conversations List */}
+                    <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+                        <div className="p-4 border-b border-gray-200">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                    <span className="text-black font-bold">R</span>
+                                </div>
+                                <div>
+                                    <h1 className="font-semibold text-gray-900">Support Chat</h1>
+                                    <p className="text-xs text-gray-500">{conversations.filter(c => c.status === 'open').length} conversations actives</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-1">
+                                {['all', 'open', 'pending', 'resolved'].map(f => (
+                                    <button key={f} onClick={() => setFilter(f)}
+                                        className={`flex-1 px-2 py-1 text-xs font-medium rounded ${filter === f ? 'bg-[#00FF88] text-black' : 'bg-gray-100 text-gray-600'}`}>
+                                        {f === 'all' ? 'Tous' : f === 'open' ? 'Ouverts' : f === 'pending' ? 'En attente' : 'Résolus'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            {filteredConversations.map(conv => (
+                                <div key={conv.id} onClick={() => setSelectedConv(conv)}
+                                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selectedConv?.id === conv.id ? 'bg-blue-50 border-l-4 border-l-[#00FF88]' : ''}`}>
+                                    <div className="flex items-start justify-between mb-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-medium">
+                                                {conv.customer.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-900 text-sm">{conv.customer}</p>
+                                                <p className="text-xs text-gray-500">{conv.channel === 'widget' ? '💬' : '📧'} {conv.subject}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-400">{conv.lastMessageAt}</p>
+                                            {conv.unread > 0 && (
+                                                <span className="inline-block mt-1 w-5 h-5 bg-[#00FF88] text-black text-xs font-bold rounded-full flex items-center justify-center">
+                                                    {conv.unread}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 truncate ml-10">{conv.lastMessage}</p>
+                                    <div className="flex gap-1 mt-2 ml-10">
+                                        <span className={`px-1.5 py-0.5 rounded text-xs ${conv.priority === 'urgent' ? 'bg-red-100 text-red-700' : conv.priority === 'high' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
+                                            {conv.priority === 'urgent' ? '🔴 Urgent' : conv.priority === 'high' ? '🟠 Haute' : '⚪ Normale'}
+                                        </span>
+                                        <span className={`px-1.5 py-0.5 rounded text-xs ${conv.status === 'open' ? 'bg-green-100 text-green-700' : conv.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
+                                            {conv.status === 'open' ? 'Ouvert' : conv.status === 'pending' ? 'En attente' : 'Résolu'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Main Chat Area */}
+                    <div className="flex-1 flex flex-col">
+                        {selectedConv ? (
+                            <>
+                                {/* Chat Header */}
+                                <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center font-medium">
+                                            {selectedConv.customer.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-gray-900">{selectedConv.customer}</p>
+                                            <p className="text-sm text-gray-500">{selectedConv.email}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={resolveConversation} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200">
+                                            ✓ Résoudre
+                                        </button>
+                                        <button className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+                                            ⋯
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Messages */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+                                    {currentMessages.map(msg => (
+                                        <div key={msg.id} className={`flex ${msg.sender === 'customer' ? 'justify-start' : 'justify-end'} animate-slideIn`}>
+                                            <div className={`max-w-md ${msg.sender === 'customer' ? 'order-2' : 'order-1'}`}>
+                                                <div className={`rounded-2xl px-4 py-2 ${
+                                                    msg.sender === 'customer' ? 'bg-white border border-gray-200' : 
+                                                    msg.sender === 'bot' ? 'bg-blue-100 text-blue-900' : 
+                                                    'bg-[#00FF88] text-black'
+                                                }`}>
+                                                    <p className="text-sm">{msg.content}</p>
+                                                </div>
+                                                
+                                                {msg.shipmentCard && (
+                                                    <div className="mt-2 bg-white rounded-xl p-3 border border-gray-200">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="text-lg">📦</span>
+                                                            <span className="font-medium">{msg.shipmentCard.carrier}</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500">Suivi: {msg.shipmentCard.trackingNumber}</p>
+                                                        <p className="text-xs text-green-600 font-medium mt-1">🚚 {msg.shipmentCard.status === 'out_for_delivery' ? 'En cours de livraison' : msg.shipmentCard.status}</p>
+                                                        <p className="text-xs text-gray-500">ETA: {msg.shipmentCard.eta}</p>
+                                                    </div>
+                                                )}
+
+                                                {msg.quickReplies && (
+                                                    <div className="mt-2 flex flex-wrap gap-2">
+                                                        {msg.quickReplies.map((reply, i) => (
+                                                            <button key={i} onClick={() => handleQuickReply(reply)}
+                                                                className="px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm hover:bg-gray-50">
+                                                                {reply}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <p className={`text-xs text-gray-400 mt-1 ${msg.sender === 'customer' ? 'text-left' : 'text-right'}`}>
+                                                    {msg.sender === 'bot' ? '🤖 Bot' : msg.sender === 'agent' ? '👤 Vous' : ''} {msg.time}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {isTyping && (
+                                        <div className="flex justify-end">
+                                            <div className="bg-blue-100 rounded-2xl px-4 py-3">
+                                                <div className="flex gap-1">
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full typing-dot"></div>
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full typing-dot"></div>
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full typing-dot"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div ref={messagesEndRef} />
+                                </div>
+
+                                {/* Canned Responses */}
+                                {showCanned && (
+                                    <div className="bg-white border-t border-gray-200 p-3">
+                                        <p className="text-xs text-gray-500 mb-2">Réponses rapides</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {cannedResponses.map(canned => (
+                                                <button key={canned.id} onClick={() => { setNewMessage(canned.content); setShowCanned(false); }}
+                                                    className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">
+                                                    {canned.title}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Input */}
+                                <div className="bg-white border-t border-gray-200 p-4">
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setShowCanned(!showCanned)} 
+                                            className={`p-2 rounded-lg ${showCanned ? 'bg-[#00FF88] text-black' : 'bg-gray-100 text-gray-600'} hover:bg-gray-200`}>
+                                            ⚡
+                                        </button>
+                                        <button className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                                            📎
+                                        </button>
+                                        <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)}
+                                            onKeyPress={e => e.key === 'Enter' && sendMessage(newMessage)}
+                                            placeholder="Tapez votre message..."
+                                            className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00FF88]" />
+                                        <button onClick={() => sendMessage(newMessage)}
+                                            className="px-4 py-2 bg-gradient-to-r from-[#00FF88] to-[#00D4AA] text-black font-medium rounded-xl hover:shadow-lg">
+                                            Envoyer
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center text-gray-500">
+                                Sélectionnez une conversation
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Customer Info Sidebar */}
+                    {selectedConv && (
+                        <div className="w-72 bg-white border-l border-gray-200 p-4 overflow-y-auto">
+                            <h3 className="font-semibold text-gray-900 mb-4">Informations client</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-xs text-gray-500">Nom</p>
+                                    <p className="font-medium">{selectedConv.customer}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Email</p>
+                                    <p className="text-sm">{selectedConv.email}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Canal</p>
+                                    <p className="text-sm">{selectedConv.channel === 'widget' ? '💬 Chat widget' : '📧 Email'}</p>
+                                </div>
+
+                                <hr className="border-gray-200" />
+
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-2">Dernières commandes</p>
+                                    <div className="space-y-2">
+                                        <div className="bg-gray-50 rounded-lg p-2">
+                                            <p className="font-mono text-xs">ORD-78234</p>
+                                            <p className="text-xs text-gray-500">15 Jan 2024 • 89.90€</p>
+                                            <span className="inline-block px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs mt-1">Livré</span>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-lg p-2">
+                                            <p className="font-mono text-xs">ORD-78102</p>
+                                            <p className="text-xs text-gray-500">10 Jan 2024 • 45.00€</p>
+                                            <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs mt-1">En transit</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr className="border-gray-200" />
+
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-2">Notes internes</p>
+                                    <textarea placeholder="Ajouter une note..." 
+                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm resize-none h-20"></textarea>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-2">Tags</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">VIP</span>
+                                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Fidèle</span>
+                                        <button className="px-2 py-1 bg-gray-100 text-gray-500 rounded text-xs">+ Ajouter</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<LiveChatPage />);
+    </script>
+</body>
+</html>

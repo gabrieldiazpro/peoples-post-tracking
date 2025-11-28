@@ -1,9 +1,7 @@
 /**
- * Peoples Post - v4.5 Enterprise Logistics Platform
- * Unified Server: REST API + Branded Tracking + Admin Dashboard
+ * Routz v4.0 - Main API Server
+ * Express.js with all routes, middleware, and integrations
  */
-
-require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
@@ -11,27 +9,20 @@ const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
-const { engine } = require('express-handlebars');
 const { Pool } = require('pg');
 const Redis = require('ioredis');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
-// Import existing routes
-const trackingRoutes = require('./api-routes');
-const servicePointRoutes = require('./service-point-routes');
-
-// Shopify integration (conditional)
-let shopifyApp = null;
-if (process.env.SHOPIFY_API_KEY && process.env.SHOPIFY_API_SECRET) {
-    const { ShopifyApp } = require('./integrations/shopify-app');
-    shopifyApp = new ShopifyApp();
-    console.log('Shopify integration enabled');
-}
+// Services
+const { CarrierSelectionAI } = require('../services/carrier-selection-ai');
+const { RealtimeService } = require('../services/realtime');
+const { QoSService } = require('../services/qos');
+const { CustomerSupportService } = require('../services/customer-support');
+const { InternationalService } = require('../services/international');
+const { ReturnsService } = require('../services/returns-advanced');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // ==========================================
 // DATABASE & CACHE
@@ -44,102 +35,46 @@ const db = new Pool({
     connectionTimeoutMillis: 2000,
 });
 
-let redis = null;
-if (process.env.REDIS_URL) {
-    redis = new Redis(process.env.REDIS_URL);
-    redis.on('error', (err) => console.log('Redis connection error:', err.message));
-}
-
-// ==========================================
-// TEMPLATE ENGINE
-// ==========================================
-
-app.engine('hbs', engine({
-    extname: '.hbs',
-    defaultLayout: false,
-    helpers: {
-        concat: (...args) => args.slice(0, -1).join(''),
-        uppercase: (str) => str ? str.toUpperCase() : '',
-        lowercase: (str) => str ? str.toLowerCase() : '',
-        formatDate: (date) => date ? new Date(date).toLocaleDateString('fr-FR') : '',
-        json: (obj) => JSON.stringify(obj)
-    }
-}));
-app.set('view engine', 'hbs');
-app.set('views', path.join(__dirname, 'templates'));
+const redis = new Redis(process.env.REDIS_URL);
 
 // ==========================================
 // MIDDLEWARE
 // ==========================================
 
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "https:", "blob:"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
-            frameSrc: ["'self'", "https://js.stripe.com"],
-            connectSrc: ["'self'", "https://api.mapbox.com", "https://api.stripe.com", "wss:"]
-        }
-    },
+    contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false
 }));
 
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Org-Id', 'X-Request-ID']
+    origin: process.env.CORS_ORIGINS?.split(',') || '*',
+    credentials: true
 }));
 
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
+app.use(express.urlencoded({ extended: true }));
 
-// Request ID middleware
-app.use((req, res, next) => {
-    req.id = req.headers['x-request-id'] || uuidv4();
-    res.setHeader('X-Request-ID', req.id);
-    next();
-});
+// Logging
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
 
 // Rate limiting
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
+    windowMs: 15 * 60 * 1000, // 15 minutes
     max: 1000,
     message: { error: 'Too many requests, please try again later' },
     standardHeaders: true,
     legacyHeaders: false,
 });
 
-const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 20,
-    message: { error: 'Too many authentication attempts' }
-});
-
 app.use('/api/', apiLimiter);
-app.use('/api/auth', authLimiter);
 
-// ==========================================
-// STATIC FILES
-// ==========================================
-
-app.use('/assets', express.static(path.join(__dirname, 'public', 'assets'), {
-    maxAge: '1d',
-    etag: true
-}));
-
-app.use('/admin', express.static(path.join(__dirname, 'public'), {
-    index: 'admin.html'
-}));
-
-app.use('/dashboard', express.static(path.join(__dirname, 'public'), {
-    index: 'dashboard-live.html'
-}));
+// Request ID
+app.use((req, res, next) => {
+    req.id = req.headers['x-request-id'] || uuidv4();
+    res.setHeader('X-Request-ID', req.id);
+    next();
+});
 
 // ==========================================
 // AUTHENTICATION MIDDLEWARE
@@ -153,18 +88,19 @@ const authenticate = async (req, res, next) => {
         }
 
         const token = authHeader.substring(7);
-
-        if (token.startsWith('rtz_') || token.startsWith('pp_')) {
+        
+        // Check if it's an API key or JWT
+        if (token.startsWith('rtz_')) {
             // API Key authentication
             const result = await db.query(
                 'SELECT u.*, o.id as org_id, o.plan FROM users u JOIN organizations o ON u.organization_id = o.id WHERE u.api_token = $1',
                 [token]
             );
-
+            
             if (result.rows.length === 0) {
                 return res.status(401).json({ error: 'Invalid API key' });
             }
-
+            
             req.user = result.rows[0];
             req.orgId = result.rows[0].org_id;
         } else {
@@ -184,62 +120,25 @@ const authenticate = async (req, res, next) => {
 };
 
 // ==========================================
-// PUBLIC ROUTES
+// HEALTH CHECK
 // ==========================================
 
-// Homepage
-app.get('/', (req, res) => {
-    res.render('index');
-});
-
-// Health check
 app.get('/health', async (req, res) => {
     try {
         await db.query('SELECT 1');
-        if (redis) await redis.ping();
-        res.json({
+        await redis.ping();
+        res.json({ 
             status: 'healthy',
             timestamp: new Date().toISOString(),
-            version: '4.5.0',
-            service: 'Peoples Post Platform'
+            version: '4.0.0'
         });
     } catch (error) {
         res.status(503).json({ status: 'unhealthy', error: error.message });
     }
 });
 
-// API info
-app.get('/api', (req, res) => {
-    res.json({
-        name: 'Peoples Post API',
-        version: '4.5.0',
-        documentation: '/api/docs',
-        endpoints: {
-            shipments: '/api/v1/shipments',
-            tracking: '/api/v1/tracking/:trackingNumber',
-            orders: '/api/v1/orders',
-            returns: '/api/v1/returns',
-            carriers: '/api/v1/carriers',
-            analytics: '/api/v1/analytics',
-            webhooks: '/api/v1/webhooks'
-        }
-    });
-});
-
 // ==========================================
-// BRANDED TRACKING & RETURNS (existing routes)
-// ==========================================
-
-app.use('/', trackingRoutes);
-app.use('/', servicePointRoutes);
-
-// Shopify routes
-if (shopifyApp) {
-    app.use('/shopify', shopifyApp.getRouter());
-}
-
-// ==========================================
-// REST API v1 - SHIPMENTS
+// SHIPMENTS API
 // ==========================================
 
 app.get('/api/v1/shipments', authenticate, async (req, res) => {
@@ -279,7 +178,7 @@ app.get('/api/v1/shipments', authenticate, async (req, res) => {
         params.push(limit, offset);
 
         const result = await db.query(query, params);
-
+        
         const countResult = await db.query(
             'SELECT COUNT(*) FROM shipments WHERE organization_id = $1',
             [req.orgId]
@@ -304,8 +203,9 @@ app.post('/api/v1/shipments', authenticate, async (req, res) => {
     try {
         const { carrier, service, sender, recipient, parcels, reference, options } = req.body;
 
+        // Validation
         if (!carrier || !sender || !recipient || !parcels?.length) {
-            return res.status(422).json({
+            return res.status(422).json({ 
                 error: 'Validation error',
                 errors: [
                     !carrier && { field: 'carrier', message: 'Carrier is required' },
@@ -316,13 +216,17 @@ app.post('/api/v1/shipments', authenticate, async (req, res) => {
             });
         }
 
+        // Generate tracking number
         const trackingNumber = generateTrackingNumber(carrier);
+
+        // Calculate total weight
         const totalWeight = parcels.reduce((sum, p) => sum + (p.weight || 0), 0);
 
+        // Create shipment
         const result = await db.query(`
             INSERT INTO shipments (
                 id, organization_id, tracking_number, carrier, service, status,
-                sender_name, sender_company, sender_address1, sender_address2,
+                sender_name, sender_company, sender_address1, sender_address2, 
                 sender_city, sender_state, sender_postal_code, sender_country, sender_phone, sender_email,
                 recipient_name, recipient_company, recipient_address1, recipient_address2,
                 recipient_city, recipient_state, recipient_postal_code, recipient_country, recipient_phone, recipient_email,
@@ -343,8 +247,11 @@ app.post('/api/v1/shipments', authenticate, async (req, res) => {
         ]);
 
         const shipment = result.rows[0];
+
+        // Generate label (mock)
         shipment.labelUrl = `/api/v1/shipments/${shipment.id}/label`;
 
+        // Emit event for webhooks
         await emitWebhookEvent(req.orgId, 'shipment.created', shipment);
 
         res.status(201).json(shipment);
@@ -383,7 +290,9 @@ app.delete('/api/v1/shipments/:id', authenticate, async (req, res) => {
             return res.status(404).json({ error: 'Shipment not found' });
         }
 
-        if (result.rows[0].status !== 'pending') {
+        const shipment = result.rows[0];
+
+        if (shipment.status !== 'pending') {
             return res.status(400).json({ error: 'Shipment cannot be cancelled - already shipped' });
         }
 
@@ -399,19 +308,49 @@ app.delete('/api/v1/shipments/:id', authenticate, async (req, res) => {
     }
 });
 
+app.get('/api/v1/shipments/:id/label', authenticate, async (req, res) => {
+    try {
+        const { format = 'pdf' } = req.query;
+        
+        const result = await db.query(
+            'SELECT * FROM shipments WHERE id = $1 AND organization_id = $2',
+            [req.params.id, req.orgId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Shipment not found' });
+        }
+
+        // Mock label generation
+        const label = generateMockLabel(result.rows[0], format);
+        
+        const contentTypes = {
+            pdf: 'application/pdf',
+            zpl: 'application/zpl',
+            png: 'image/png'
+        };
+
+        res.setHeader('Content-Type', contentTypes[format] || 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="label-${result.rows[0].tracking_number}.${format}"`);
+        res.send(label);
+    } catch (error) {
+        console.error('Error generating label:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // ==========================================
-// REST API v1 - TRACKING
+// TRACKING API
 // ==========================================
 
 app.get('/api/v1/tracking/:trackingNumber', authenticate, async (req, res) => {
     try {
         const { trackingNumber } = req.params;
 
-        if (redis) {
-            const cached = await redis.get(`tracking:${trackingNumber}`);
-            if (cached) {
-                return res.json(JSON.parse(cached));
-            }
+        // Check cache first
+        const cached = await redis.get(`tracking:${trackingNumber}`);
+        if (cached) {
+            return res.json(JSON.parse(cached));
         }
 
         const result = await db.query(
@@ -435,9 +374,8 @@ app.get('/api/v1/tracking/:trackingNumber', authenticate, async (req, res) => {
             events: shipment.tracking_events || generateMockTrackingEvents(shipment)
         };
 
-        if (redis) {
-            await redis.setex(`tracking:${trackingNumber}`, 300, JSON.stringify(trackingInfo));
-        }
+        // Cache for 5 minutes
+        await redis.setex(`tracking:${trackingNumber}`, 300, JSON.stringify(trackingInfo));
 
         res.json(trackingInfo);
     } catch (error) {
@@ -481,7 +419,7 @@ app.post('/api/v1/tracking/batch', authenticate, async (req, res) => {
 });
 
 // ==========================================
-// REST API v1 - ORDERS
+// ORDERS API
 // ==========================================
 
 app.get('/api/v1/orders', authenticate, async (req, res) => {
@@ -509,7 +447,7 @@ app.get('/api/v1/orders', authenticate, async (req, res) => {
         params.push(limit, offset);
 
         const result = await db.query(query, params);
-
+        
         res.json({
             data: result.rows,
             pagination: { page: parseInt(page), limit: parseInt(limit) }
@@ -525,7 +463,7 @@ app.post('/api/v1/orders', authenticate, async (req, res) => {
         const { orderNumber, customer, items, shippingAddress, total } = req.body;
 
         const result = await db.query(`
-            INSERT INTO orders (id, organization_id, order_number, source, status,
+            INSERT INTO orders (id, organization_id, order_number, source, status, 
                 customer_name, customer_email, shipping_address, items, total)
             VALUES ($1, $2, $3, 'api', 'pending', $4, $5, $6, $7, $8)
             RETURNING *
@@ -547,7 +485,7 @@ app.post('/api/v1/orders', authenticate, async (req, res) => {
 app.post('/api/v1/orders/:orderId/ship', authenticate, async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { carrier, service } = req.body;
+        const { carrier, service, warehouseId } = req.body;
 
         const orderResult = await db.query(
             'SELECT * FROM orders WHERE id = $1 AND organization_id = $2',
@@ -559,10 +497,9 @@ app.post('/api/v1/orders/:orderId/ship', authenticate, async (req, res) => {
         }
 
         const order = orderResult.rows[0];
-        const shippingAddress = typeof order.shipping_address === 'string'
-            ? JSON.parse(order.shipping_address)
-            : order.shipping_address;
+        const shippingAddress = order.shipping_address;
 
+        // Create shipment from order
         const trackingNumber = generateTrackingNumber(carrier);
 
         const shipmentResult = await db.query(`
@@ -572,10 +509,11 @@ app.post('/api/v1/orders/:orderId/ship', authenticate, async (req, res) => {
             RETURNING *
         `, [
             uuidv4(), req.orgId, orderId, trackingNumber, carrier, service || 'standard',
-            shippingAddress?.name, shippingAddress?.address1, shippingAddress?.city,
-            shippingAddress?.postalCode, shippingAddress?.country
+            shippingAddress.name, shippingAddress.address1, shippingAddress.city,
+            shippingAddress.postalCode, shippingAddress.country
         ]);
 
+        // Update order status
         await db.query(
             'UPDATE orders SET status = $1, shipped_at = NOW() WHERE id = $2',
             ['shipped', orderId]
@@ -591,7 +529,7 @@ app.post('/api/v1/orders/:orderId/ship', authenticate, async (req, res) => {
 });
 
 // ==========================================
-// REST API v1 - RETURNS
+// RETURNS API
 // ==========================================
 
 app.get('/api/v1/returns', authenticate, async (req, res) => {
@@ -622,13 +560,14 @@ app.post('/api/v1/returns', authenticate, async (req, res) => {
     try {
         const { orderId, items, reason, comments } = req.body;
 
-        const validReasons = ['SIZE_TOO_SMALL', 'SIZE_TOO_LARGE', 'WRONG_ITEM', 'DEFECTIVE',
+        const validReasons = ['SIZE_TOO_SMALL', 'SIZE_TOO_LARGE', 'WRONG_ITEM', 'DEFECTIVE', 
                             'DAMAGED_SHIPPING', 'NOT_AS_DESCRIBED', 'CHANGED_MIND', 'OTHER'];
 
         if (!validReasons.includes(reason)) {
             return res.status(422).json({ error: 'Invalid return reason' });
         }
 
+        // Check order exists
         const orderResult = await db.query(
             'SELECT * FROM orders WHERE id = $1 AND organization_id = $2',
             [orderId, req.orgId]
@@ -675,7 +614,7 @@ app.post('/api/v1/returns/:returnId/approve', authenticate, async (req, res) => 
         }
 
         await db.query(`
-            UPDATE returns SET status = 'approved', approved_at = NOW(),
+            UPDATE returns SET status = 'approved', approved_at = NOW(), 
                 return_carrier = $1, return_tracking_number = $2
             WHERE id = $3
         `, [carrier, trackingNumber, returnId]);
@@ -691,8 +630,45 @@ app.post('/api/v1/returns/:returnId/approve', authenticate, async (req, res) => 
     }
 });
 
+app.post('/api/v1/returns/:returnId/refund', authenticate, async (req, res) => {
+    try {
+        const { returnId } = req.params;
+        const { amount, method } = req.body;
+
+        const result = await db.query(
+            'SELECT * FROM returns WHERE id = $1 AND organization_id = $2',
+            [returnId, req.orgId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Return not found' });
+        }
+
+        const returnItem = result.rows[0];
+
+        if (!['received', 'inspecting', 'approved'].includes(returnItem.status)) {
+            return res.status(400).json({ error: 'Return must be received before refund' });
+        }
+
+        await db.query(`
+            UPDATE returns SET status = 'refunded', refund_amount = $1, refund_method = $2, 
+                refund_status = 'completed', refunded_at = NOW()
+            WHERE id = $3
+        `, [amount, method, returnId]);
+
+        const updated = await db.query('SELECT * FROM returns WHERE id = $1', [returnId]);
+
+        await emitWebhookEvent(req.orgId, 'return.refunded', updated.rows[0]);
+
+        res.json(updated.rows[0]);
+    } catch (error) {
+        console.error('Error processing refund:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // ==========================================
-// REST API v1 - CARRIERS
+// CARRIERS API
 // ==========================================
 
 app.get('/api/v1/carriers', authenticate, async (req, res) => {
@@ -709,8 +685,9 @@ app.post('/api/v1/carriers/rates', authenticate, async (req, res) => {
     try {
         const { origin, destination, parcels } = req.body;
 
+        // Mock rate calculation
         const carriers = await db.query('SELECT * FROM carriers WHERE active = true');
-
+        
         const rates = carriers.rows.map(carrier => {
             const basePrice = getBasePrice(carrier.id);
             const weight = parcels.reduce((sum, p) => sum + (p.weight || 0), 0);
@@ -733,8 +710,23 @@ app.post('/api/v1/carriers/rates', authenticate, async (req, res) => {
     }
 });
 
+app.post('/api/v1/carriers/recommend', authenticate, async (req, res) => {
+    try {
+        const carrierAI = new CarrierSelectionAI({ db });
+        const recommendation = await carrierAI.recommendCarrier({
+            ...req.body,
+            orgId: req.orgId
+        });
+
+        res.json(recommendation);
+    } catch (error) {
+        console.error('Error getting recommendation:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // ==========================================
-// REST API v1 - ANALYTICS
+// ANALYTICS API
 // ==========================================
 
 app.get('/api/v1/analytics/dashboard', authenticate, async (req, res) => {
@@ -748,7 +740,7 @@ app.get('/api/v1/analytics/dashboard', authenticate, async (req, res) => {
                     COUNT(CASE WHEN status = 'delivered' THEN 1 END) as delivered,
                     COUNT(CASE WHEN status = 'exception' THEN 1 END) as exceptions,
                     AVG(EXTRACT(EPOCH FROM (delivered_at - shipped_at))/86400) as avg_days
-                FROM shipments
+                FROM shipments 
                 WHERE organization_id = $1 AND created_at >= NOW() - INTERVAL '${days} days'
             `, [req.orgId]),
             db.query(`
@@ -756,19 +748,19 @@ app.get('/api/v1/analytics/dashboard', authenticate, async (req, res) => {
                 FROM orders WHERE organization_id = $1 AND created_at >= NOW() - INTERVAL '${days} days'
             `, [req.orgId]),
             db.query(`
-                SELECT COUNT(*) as total FROM returns
+                SELECT COUNT(*) as total FROM returns 
                 WHERE organization_id = $1 AND created_at >= NOW() - INTERVAL '${days} days'
             `, [req.orgId]),
             db.query(`
-                SELECT carrier, COUNT(*) as count FROM shipments
+                SELECT carrier, COUNT(*) as count FROM shipments 
                 WHERE organization_id = $1 AND created_at >= NOW() - INTERVAL '${days} days'
                 GROUP BY carrier ORDER BY count DESC LIMIT 5
             `, [req.orgId])
         ]);
 
         const shipmentsData = shipments.rows[0];
-        const deliveryRate = shipmentsData.total > 0
-            ? (shipmentsData.delivered / shipmentsData.total * 100).toFixed(1)
+        const deliveryRate = shipmentsData.total > 0 
+            ? (shipmentsData.delivered / shipmentsData.total * 100).toFixed(1) 
             : 0;
 
         res.json({
@@ -787,8 +779,19 @@ app.get('/api/v1/analytics/dashboard', authenticate, async (req, res) => {
     }
 });
 
+app.get('/api/v1/analytics/carriers', authenticate, async (req, res) => {
+    try {
+        const qosService = new QoSService({ db });
+        const performance = await qosService.compareCarriers(req.orgId);
+        res.json(performance);
+    } catch (error) {
+        console.error('Error fetching carrier analytics:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // ==========================================
-// REST API v1 - WEBHOOKS
+// WEBHOOKS API
 // ==========================================
 
 app.get('/api/v1/webhooks', authenticate, async (req, res) => {
@@ -823,6 +826,27 @@ app.post('/api/v1/webhooks', authenticate, async (req, res) => {
 });
 
 // ==========================================
+// METRICS ENDPOINT (Prometheus)
+// ==========================================
+
+app.get('/api/v1/metrics', async (req, res) => {
+    res.setHeader('Content-Type', 'text/plain');
+    res.send(`
+# HELP routz_shipments_total Total number of shipments
+# TYPE routz_shipments_total counter
+routz_shipments_total 0
+
+# HELP routz_api_requests_total Total API requests
+# TYPE routz_api_requests_total counter
+routz_api_requests_total 0
+
+# HELP routz_api_latency_seconds API latency
+# TYPE routz_api_latency_seconds histogram
+routz_api_latency_seconds_bucket{le="0.1"} 0
+    `.trim());
+});
+
+// ==========================================
 // HELPER FUNCTIONS
 // ==========================================
 
@@ -833,66 +857,47 @@ function generateTrackingNumber(carrier) {
         mondial_relay: 'MR',
         dhl: 'JJD',
         ups: '1Z',
-        fedex: '7',
-        gls: 'GLS',
-        dpd: 'DPD'
+        fedex: '7'
     };
-    const prefix = prefixes[carrier] || 'PP';
+    const prefix = prefixes[carrier] || 'RT';
     return `${prefix}${Math.random().toString().slice(2, 13)}`;
 }
 
 function getStatusLabel(status) {
     const labels = {
         pending: 'En attente',
-        shipped: 'Expedie',
+        shipped: 'Expédié',
         in_transit: 'En transit',
         out_for_delivery: 'En cours de livraison',
-        delivered: 'Livre',
+        delivered: 'Livré',
         exception: 'Exception',
-        returned: 'Retourne',
-        cancelled: 'Annule'
+        returned: 'Retourné'
     };
     return labels[status] || status;
 }
 
 function getBasePrice(carrierId) {
-    const prices = {
-        colissimo: 4.95,
-        chronopost: 9.90,
-        mondial_relay: 3.50,
-        dhl: 12.00,
-        ups: 11.50,
-        fedex: 13.00,
-        gls: 5.50,
-        dpd: 5.20
-    };
+    const prices = { colissimo: 4.95, chronopost: 9.90, mondial_relay: 3.50, dhl: 12.00, ups: 11.50, fedex: 13.00, gls: 5.50, dpd: 5.20 };
     return prices[carrierId] || 6.00;
 }
 
 function getEstimatedDays(carrierId) {
-    const days = {
-        colissimo: 3,
-        chronopost: 1,
-        mondial_relay: 5,
-        dhl: 2,
-        ups: 2,
-        fedex: 2,
-        gls: 3,
-        dpd: 3
-    };
+    const days = { colissimo: 3, chronopost: 1, mondial_relay: 5, dhl: 2, ups: 2, fedex: 2, gls: 3, dpd: 3 };
     return days[carrierId] || 3;
+}
+
+function generateMockLabel(shipment, format) {
+    return Buffer.from(`Label for ${shipment.tracking_number}`);
 }
 
 function generateMockTrackingEvents(shipment) {
     return [
-        { timestamp: shipment.created_at, status: 'created', description: 'Envoi cree', location: 'Origine' },
-        { timestamp: new Date().toISOString(), status: shipment.status, description: getStatusLabel(shipment.status), location: 'En transit' }
+        { timestamp: shipment.created_at, status: 'created', description: 'Shipment created', location: 'Origin' },
+        { timestamp: new Date().toISOString(), status: shipment.status, description: getStatusLabel(shipment.status), location: 'In transit' }
     ];
 }
 
 async function emitWebhookEvent(orgId, event, data) {
-    if (!redis) return;
-
     try {
         const webhooks = await db.query(
             'SELECT * FROM webhooks WHERE organization_id = $1 AND active = true AND $2 = ANY(events)',
@@ -900,6 +905,7 @@ async function emitWebhookEvent(orgId, event, data) {
         );
 
         for (const webhook of webhooks.rows) {
+            // Queue webhook delivery
             await redis.lpush('webhook_queue', JSON.stringify({
                 webhookId: webhook.id,
                 url: webhook.url,
@@ -918,67 +924,25 @@ async function emitWebhookEvent(orgId, event, data) {
 // ERROR HANDLING
 // ==========================================
 
-app.use((req, res) => {
-    res.status(404).json({
-        error: 'Not found',
-        message: `The requested endpoint ${req.method} ${req.path} does not exist.`
-    });
-});
-
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
-    const isDev = process.env.NODE_ENV !== 'production';
-    res.status(err.status || 500).json({
-        error: err.message || 'Internal server error',
-        ...(isDev && { stack: err.stack })
-    });
+    res.status(500).json({ error: 'Internal server error' });
 });
 
-// ==========================================
-// GRACEFUL SHUTDOWN
-// ==========================================
-
-process.on('SIGTERM', async () => {
-    console.log('SIGTERM received. Shutting down gracefully...');
-    await db.end();
-    if (redis) await redis.quit();
-    process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-    console.log('SIGINT received. Shutting down gracefully...');
-    await db.end();
-    if (redis) await redis.quit();
-    process.exit(0);
+app.use((req, res) => {
+    res.status(404).json({ error: 'Not found' });
 });
 
 // ==========================================
 // START SERVER
 // ==========================================
 
+const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
-    console.log(`
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║   📦 PEOPLES POST - v4.5 Enterprise Platform                 ║
-║                                                              ║
-║   Server running on port ${PORT}                               ║
-║   Environment: ${(process.env.NODE_ENV || 'development').padEnd(12)}                         ║
-║                                                              ║
-║   Public Endpoints:                                          ║
-║   • Homepage:   http://localhost:${PORT}/                      ║
-║   • Tracking:   http://localhost:${PORT}/t/:trackingNumber     ║
-║   • Returns:    http://localhost:${PORT}/returns/:orgId        ║
-║                                                              ║
-║   Admin Endpoints:                                           ║
-║   • Dashboard:  http://localhost:${PORT}/dashboard             ║
-║   • Admin:      http://localhost:${PORT}/admin                 ║
-║   • API Docs:   http://localhost:${PORT}/api                   ║
-║                                                              ║
-║   REST API:     http://localhost:${PORT}/api/v1/*              ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-    `);
+    console.log(`🚀 Routz API server running on port ${PORT}`);
+    console.log(`📚 API Docs: http://localhost:${PORT}/docs`);
+    console.log(`❤️  Health: http://localhost:${PORT}/health`);
 });
 
 module.exports = app;

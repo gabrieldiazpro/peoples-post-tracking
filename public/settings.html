@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Paramètres</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .toggle-checkbox:checked { right: 0; border-color: #00FF88; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #00FF88; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Components
+        const Input = ({ label, helper, error, ...props }) => (
+            <div className="space-y-1">
+                {label && <label className="block text-sm font-medium text-gray-700">{label}</label>}
+                <input className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#00FF88] focus:border-[#00FF88] outline-none ${error ? 'border-red-500' : 'border-gray-300'}`} {...props} />
+                {helper && <p className="text-xs text-gray-500">{helper}</p>}
+                {error && <p className="text-xs text-red-500">{error}</p>}
+            </div>
+        );
+
+        const Select = ({ label, options, ...props }) => (
+            <div className="space-y-1">
+                {label && <label className="block text-sm font-medium text-gray-700">{label}</label>}
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00FF88]" {...props}>
+                    {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+            </div>
+        );
+
+        const Toggle = ({ label, description, checked, onChange }) => (
+            <div className="flex items-center justify-between py-3">
+                <div>
+                    <p className="font-medium text-gray-900">{label}</p>
+                    {description && <p className="text-sm text-gray-500">{description}</p>}
+                </div>
+                <div className="relative">
+                    <input type="checkbox" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-200" checked={checked} onChange={e => onChange(e.target.checked)} style={{ right: checked ? 0 : '24px' }} />
+                    <label className="toggle-label block overflow-hidden h-6 w-12 rounded-full cursor-pointer transition-colors" style={{ backgroundColor: checked ? '#00FF88' : '#E5E7EB' }} onClick={() => onChange(!checked)}></label>
+                </div>
+            </div>
+        );
+
+        const Button = ({ children, variant = 'primary', size = 'md', loading, ...props }) => {
+            const variants = { primary: 'bg-[#00FF88] hover:bg-[#00E07A] text-black', secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-900', danger: 'bg-red-500 hover:bg-red-600 text-white', ghost: 'bg-transparent hover:bg-gray-100 text-gray-700' };
+            const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2', lg: 'px-6 py-3' };
+            return (
+                <button className={`${variants[variant]} ${sizes[size]} rounded-lg font-medium transition-all disabled:opacity-50 flex items-center gap-2`} disabled={loading} {...props}>
+                    {loading && <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                    {children}
+                </button>
+            );
+        };
+
+        const Card = ({ title, description, children, actions }) => (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                {(title || description) && (
+                    <div className="px-6 py-4 border-b border-gray-100">
+                        {title && <h3 className="font-semibold text-gray-900">{title}</h3>}
+                        {description && <p className="text-sm text-gray-500 mt-1">{description}</p>}
+                    </div>
+                )}
+                <div className="p-6">{children}</div>
+                {actions && <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">{actions}</div>}
+            </div>
+        );
+
+        // Integration Card
+        const IntegrationCard = ({ icon, name, description, status, onConnect, onDisconnect, onConfigure }) => (
+            <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-2xl">{icon}</div>
+                        <div>
+                            <h4 className="font-medium text-gray-900">{name}</h4>
+                            <p className="text-sm text-gray-500">{description}</p>
+                        </div>
+                    </div>
+                    {status === 'connected' && <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Connecté</span>}
+                </div>
+                <div className="flex gap-2">
+                    {status === 'connected' ? (
+                        <>
+                            <Button variant="secondary" size="sm" onClick={onConfigure}>⚙️ Configurer</Button>
+                            <Button variant="ghost" size="sm" onClick={onDisconnect}>Déconnecter</Button>
+                        </>
+                    ) : (
+                        <Button size="sm" onClick={onConnect}>Connecter</Button>
+                    )}
+                </div>
+            </div>
+        );
+
+        // Tabs
+        const tabs = [
+            { id: 'profile', label: 'Profil', icon: '👤' },
+            { id: 'organization', label: 'Organisation', icon: '🏢' },
+            { id: 'carriers', label: 'Transporteurs', icon: '🚚' },
+            { id: 'ecommerce', label: 'E-commerce', icon: '🛒' },
+            { id: 'api', label: 'API & Webhooks', icon: '🔗' },
+            { id: 'notifications', label: 'Notifications', icon: '🔔' },
+            { id: 'billing', label: 'Facturation', icon: '💳' },
+            { id: 'security', label: 'Sécurité', icon: '🔒' },
+        ];
+
+        // Main App
+        const SettingsApp = () => {
+            const [activeTab, setActiveTab] = useState('profile');
+            const [saving, setSaving] = useState(false);
+            const [toast, setToast] = useState(null);
+
+            // Profile State
+            const [profile, setProfile] = useState({
+                firstName: 'Gabriel',
+                lastName: 'Martin',
+                email: 'gabriel@maboutique.fr',
+                phone: '+33612345678',
+                language: 'fr',
+                timezone: 'Europe/Paris'
+            });
+
+            // Organization State
+            const [org, setOrg] = useState({
+                name: 'Ma Boutique',
+                address: '10 rue du Commerce',
+                city: 'Paris',
+                postalCode: '75001',
+                country: 'FR',
+                vatNumber: 'FR12345678901',
+                siret: '12345678901234'
+            });
+
+            // Carriers State
+            const [carriers, setCarriers] = useState({
+                colissimo: { enabled: true, contractNumber: 'COL123456', configured: true },
+                chronopost: { enabled: true, accountNumber: 'CHR789012', configured: true },
+                mondial_relay: { enabled: true, brandId: 'MR456', configured: true },
+                dhl: { enabled: false, configured: false },
+                ups: { enabled: false, configured: false },
+                fedex: { enabled: false, configured: false },
+            });
+
+            // E-commerce State
+            const [stores, setStores] = useState([
+                { id: 'store-1', platform: 'shopify', name: 'Ma Boutique Shopify', url: 'maboutique.myshopify.com', status: 'connected' },
+                { id: 'store-2', platform: 'woocommerce', name: 'WooCommerce Store', url: 'shop.example.com', status: 'connected' },
+            ]);
+
+            // API State
+            const [apiKeys, setApiKeys] = useState([
+                { id: 'key-1', name: 'Production', key: 'rtz_live_xxxxxxxxxxxx', created: '2024-01-01', lastUsed: '2024-01-15' },
+                { id: 'key-2', name: 'Test', key: 'rtz_test_xxxxxxxxxxxx', created: '2024-01-10', lastUsed: '2024-01-14' },
+            ]);
+
+            const [webhooks, setWebhooks] = useState([
+                { id: 'wh-1', url: 'https://example.com/webhooks/routz', events: ['shipment.created', 'shipment.delivered'], active: true },
+            ]);
+
+            // Notifications State
+            const [notifications, setNotifications] = useState({
+                emailShipmentCreated: true,
+                emailShipmentDelivered: true,
+                emailException: true,
+                emailDailyReport: false,
+                smsDelivery: false,
+                slackIntegration: false
+            });
+
+            // Billing State
+            const [billing, setBilling] = useState({
+                plan: 'pro',
+                shipmentsUsed: 847,
+                shipmentsLimit: 1000,
+                nextBillingDate: '2024-02-01',
+                paymentMethod: '**** **** **** 4242'
+            });
+
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), 3000);
+            };
+
+            const handleSave = async () => {
+                setSaving(true);
+                await new Promise(r => setTimeout(r, 1000));
+                setSaving(false);
+                showToast('Paramètres enregistrés');
+            };
+
+            // Render Tab Content
+            const renderTabContent = () => {
+                switch (activeTab) {
+                    case 'profile':
+                        return (
+                            <div className="space-y-6">
+                                <Card title="Informations personnelles" description="Vos informations de profil" actions={<Button onClick={handleSave} loading={saving}>Enregistrer</Button>}>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <Input label="Prénom" value={profile.firstName} onChange={e => setProfile(p => ({ ...p, firstName: e.target.value }))} />
+                                        <Input label="Nom" value={profile.lastName} onChange={e => setProfile(p => ({ ...p, lastName: e.target.value }))} />
+                                        <Input label="Email" type="email" value={profile.email} onChange={e => setProfile(p => ({ ...p, email: e.target.value }))} />
+                                        <Input label="Téléphone" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
+                                        <Select label="Langue" value={profile.language} onChange={e => setProfile(p => ({ ...p, language: e.target.value }))} options={[{ value: 'fr', label: 'Français' }, { value: 'en', label: 'English' }, { value: 'de', label: 'Deutsch' }]} />
+                                        <Select label="Fuseau horaire" value={profile.timezone} onChange={e => setProfile(p => ({ ...p, timezone: e.target.value }))} options={[{ value: 'Europe/Paris', label: 'Paris (UTC+1)' }, { value: 'Europe/London', label: 'Londres (UTC)' }]} />
+                                    </div>
+                                </Card>
+                                <Card title="Photo de profil">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-20 h-20 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-full flex items-center justify-center text-white text-2xl font-bold">GM</div>
+                                        <div>
+                                            <Button variant="secondary" size="sm">📷 Changer</Button>
+                                            <p className="text-xs text-gray-500 mt-2">JPG, PNG max 2MB</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                        );
+
+                    case 'organization':
+                        return (
+                            <div className="space-y-6">
+                                <Card title="Informations société" description="Utilisées sur les étiquettes et factures" actions={<Button onClick={handleSave} loading={saving}>Enregistrer</Button>}>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="col-span-2"><Input label="Raison sociale" value={org.name} onChange={e => setOrg(o => ({ ...o, name: e.target.value }))} /></div>
+                                        <div className="col-span-2"><Input label="Adresse" value={org.address} onChange={e => setOrg(o => ({ ...o, address: e.target.value }))} /></div>
+                                        <Input label="Code postal" value={org.postalCode} onChange={e => setOrg(o => ({ ...o, postalCode: e.target.value }))} />
+                                        <Input label="Ville" value={org.city} onChange={e => setOrg(o => ({ ...o, city: e.target.value }))} />
+                                        <Input label="N° TVA intracommunautaire" value={org.vatNumber} onChange={e => setOrg(o => ({ ...o, vatNumber: e.target.value }))} />
+                                        <Input label="SIRET" value={org.siret} onChange={e => setOrg(o => ({ ...o, siret: e.target.value }))} />
+                                    </div>
+                                </Card>
+                                <Card title="Logo">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center text-gray-400">
+                                            <span className="text-4xl">🏢</span>
+                                        </div>
+                                        <div>
+                                            <Button variant="secondary" size="sm">📷 Télécharger</Button>
+                                            <p className="text-xs text-gray-500 mt-2">Recommandé: 400x400px, PNG transparent</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                        );
+
+                    case 'carriers':
+                        return (
+                            <div className="space-y-6">
+                                <Card title="Transporteurs France" description="Configurez vos comptes transporteurs">
+                                    <div className="space-y-4">
+                                        {[
+                                            { id: 'colissimo', name: 'Colissimo', icon: '📮', desc: 'La Poste' },
+                                            { id: 'chronopost', name: 'Chronopost', icon: '⚡', desc: 'Express France' },
+                                            { id: 'mondial_relay', name: 'Mondial Relay', icon: '🏪', desc: 'Points relais' },
+                                        ].map(carrier => (
+                                            <div key={carrier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-2xl">{carrier.icon}</span>
+                                                    <div>
+                                                        <p className="font-medium">{carrier.name}</p>
+                                                        <p className="text-sm text-gray-500">{carrier.desc}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    {carriers[carrier.id]?.configured && <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">Configuré</span>}
+                                                    <Button variant="secondary" size="sm">⚙️ Configurer</Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                                <Card title="Transporteurs internationaux">
+                                    <div className="grid grid-cols-3 gap-4">
+                                        {[
+                                            { id: 'dhl', name: 'DHL Express', icon: '📦' },
+                                            { id: 'ups', name: 'UPS', icon: '🟤' },
+                                            { id: 'fedex', name: 'FedEx', icon: '🟣' },
+                                            { id: 'gls', name: 'GLS', icon: '🔵' },
+                                            { id: 'dpd', name: 'DPD', icon: '🔴' },
+                                            { id: 'tnt', name: 'TNT', icon: '🟠' },
+                                        ].map(carrier => (
+                                            <div key={carrier.id} className="p-4 border border-gray-200 rounded-xl text-center hover:border-[#00FF88] transition-colors cursor-pointer">
+                                                <span className="text-3xl">{carrier.icon}</span>
+                                                <p className="font-medium mt-2">{carrier.name}</p>
+                                                <Button variant="ghost" size="sm" className="mt-2">+ Ajouter</Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                            </div>
+                        );
+
+                    case 'ecommerce':
+                        return (
+                            <div className="space-y-6">
+                                <Card title="Boutiques connectées" description="Synchronisez vos commandes automatiquement">
+                                    <div className="space-y-4">
+                                        {stores.map(store => (
+                                            <div key={store.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-2xl">{store.platform === 'shopify' ? '🛒' : '🔮'}</span>
+                                                    <div>
+                                                        <p className="font-medium">{store.name}</p>
+                                                        <p className="text-sm text-gray-500">{store.url}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">Connecté</span>
+                                                    <Button variant="secondary" size="sm">⚙️</Button>
+                                                    <Button variant="ghost" size="sm">🔄 Sync</Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                                <Card title="Ajouter une boutique">
+                                    <div className="grid grid-cols-4 gap-4">
+                                        {[
+                                            { id: 'shopify', name: 'Shopify', icon: '🛒' },
+                                            { id: 'woocommerce', name: 'WooCommerce', icon: '🔮' },
+                                            { id: 'prestashop', name: 'PrestaShop', icon: '🎀' },
+                                            { id: 'magento', name: 'Magento', icon: '🔶' },
+                                        ].map(platform => (
+                                            <div key={platform.id} className="p-4 border border-gray-200 rounded-xl text-center hover:border-[#00FF88] transition-colors cursor-pointer">
+                                                <span className="text-3xl">{platform.icon}</span>
+                                                <p className="font-medium mt-2">{platform.name}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                                <Card title="Marketplaces">
+                                    <div className="grid grid-cols-4 gap-4">
+                                        {[
+                                            { id: 'amazon', name: 'Amazon', icon: '📦' },
+                                            { id: 'cdiscount', name: 'Cdiscount', icon: '🔴' },
+                                            { id: 'fnac', name: 'Fnac', icon: '📚' },
+                                            { id: 'manomano', name: 'ManoMano', icon: '🔧' },
+                                        ].map(mp => (
+                                            <div key={mp.id} className="p-4 border border-gray-200 rounded-xl text-center hover:border-[#00FF88] transition-colors cursor-pointer">
+                                                <span className="text-3xl">{mp.icon}</span>
+                                                <p className="font-medium mt-2">{mp.name}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                            </div>
+                        );
+
+                    case 'api':
+                        return (
+                            <div className="space-y-6">
+                                <Card title="Clés API" description="Gérez vos clés d'accès à l'API" actions={<Button>+ Nouvelle clé</Button>}>
+                                    <div className="space-y-3">
+                                        {apiKeys.map(key => (
+                                            <div key={key.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                                <div>
+                                                    <p className="font-medium">{key.name}</p>
+                                                    <p className="font-mono text-sm text-gray-500">{key.key.slice(0, 20)}...</p>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs text-gray-500">Utilisée {key.lastUsed}</span>
+                                                    <Button variant="ghost" size="sm">📋 Copier</Button>
+                                                    <Button variant="danger" size="sm">🗑️</Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                                <Card title="Webhooks" description="Recevez des notifications en temps réel" actions={<Button>+ Nouveau webhook</Button>}>
+                                    <div className="space-y-3">
+                                        {webhooks.map(wh => (
+                                            <div key={wh.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                                <div>
+                                                    <p className="font-mono text-sm">{wh.url}</p>
+                                                    <div className="flex gap-2 mt-2">
+                                                        {wh.events.map(e => <span key={e} className="px-2 py-0.5 bg-gray-200 rounded text-xs">{e}</span>)}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${wh.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{wh.active ? 'Actif' : 'Inactif'}</span>
+                                                    <Button variant="secondary" size="sm">⚙️</Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                                <Card title="Documentation">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-medium">API Reference</p>
+                                            <p className="text-sm text-gray-500">Documentation complète de l'API REST et GraphQL</p>
+                                        </div>
+                                        <Button variant="secondary" onClick={() => window.open('/docs/', '_blank')}>📚 Ouvrir</Button>
+                                    </div>
+                                </Card>
+                            </div>
+                        );
+
+                    case 'notifications':
+                        return (
+                            <div className="space-y-6">
+                                <Card title="Notifications email" actions={<Button onClick={handleSave} loading={saving}>Enregistrer</Button>}>
+                                    <div className="divide-y">
+                                        <Toggle label="Expédition créée" description="Recevoir un email à chaque nouvelle expédition" checked={notifications.emailShipmentCreated} onChange={v => setNotifications(n => ({ ...n, emailShipmentCreated: v }))} />
+                                        <Toggle label="Colis livré" description="Notification de livraison réussie" checked={notifications.emailShipmentDelivered} onChange={v => setNotifications(n => ({ ...n, emailShipmentDelivered: v }))} />
+                                        <Toggle label="Exceptions" description="Alertes en cas de problème de livraison" checked={notifications.emailException} onChange={v => setNotifications(n => ({ ...n, emailException: v }))} />
+                                        <Toggle label="Rapport quotidien" description="Résumé journalier de l'activité" checked={notifications.emailDailyReport} onChange={v => setNotifications(n => ({ ...n, emailDailyReport: v }))} />
+                                    </div>
+                                </Card>
+                                <Card title="Notifications SMS">
+                                    <Toggle label="SMS livraison" description="Envoyer un SMS au destinataire lors de la livraison" checked={notifications.smsDelivery} onChange={v => setNotifications(n => ({ ...n, smsDelivery: v }))} />
+                                </Card>
+                                <Card title="Intégrations">
+                                    <Toggle label="Slack" description="Envoyer les alertes dans un canal Slack" checked={notifications.slackIntegration} onChange={v => setNotifications(n => ({ ...n, slackIntegration: v }))} />
+                                </Card>
+                            </div>
+                        );
+
+                    case 'billing':
+                        return (
+                            <div className="space-y-6">
+                                <Card title="Votre abonnement">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <span className="px-3 py-1 bg-[#00FF88] text-black rounded-full text-sm font-medium">Plan Pro</span>
+                                            <p className="text-sm text-gray-500 mt-2">Prochain renouvellement: {billing.nextBillingDate}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-3xl font-bold">49€<span className="text-lg text-gray-500">/mois</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span>Expéditions ce mois</span>
+                                            <span className="font-medium">{billing.shipmentsUsed} / {billing.shipmentsLimit}</span>
+                                        </div>
+                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div className="h-full bg-[#00FF88]" style={{ width: `${(billing.shipmentsUsed / billing.shipmentsLimit) * 100}%` }} />
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex gap-3">
+                                        <Button variant="secondary">Changer de plan</Button>
+                                        <Button variant="ghost">Voir les factures</Button>
+                                    </div>
+                                </Card>
+                                <Card title="Moyen de paiement">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-blue-400 rounded flex items-center justify-center text-white text-xs font-bold">VISA</div>
+                                            <div>
+                                                <p className="font-medium">{billing.paymentMethod}</p>
+                                                <p className="text-sm text-gray-500">Expire 12/25</p>
+                                            </div>
+                                        </div>
+                                        <Button variant="secondary" size="sm">Modifier</Button>
+                                    </div>
+                                </Card>
+                                <Card title="Plans disponibles">
+                                    <div className="grid grid-cols-3 gap-4">
+                                        {[
+                                            { name: 'Starter', price: '19', features: ['100 expéditions/mois', '2 transporteurs', 'Support email'] },
+                                            { name: 'Pro', price: '49', features: ['1000 expéditions/mois', 'Tous transporteurs', 'Support prioritaire', 'API complète'], current: true },
+                                            { name: 'Enterprise', price: '149', features: ['Illimité', 'Tous transporteurs', 'Support dédié', 'SLA 99.9%', 'Custom integrations'] },
+                                        ].map(plan => (
+                                            <div key={plan.name} className={`p-4 border-2 rounded-xl ${plan.current ? 'border-[#00FF88] bg-[#00FF88]/5' : 'border-gray-200'}`}>
+                                                <h4 className="font-bold text-lg">{plan.name}</h4>
+                                                <p className="text-2xl font-bold mt-2">{plan.price}€<span className="text-sm text-gray-500">/mois</span></p>
+                                                <ul className="mt-4 space-y-2">
+                                                    {plan.features.map(f => <li key={f} className="text-sm text-gray-600 flex items-center gap-2"><span className="text-[#00FF88]">✓</span>{f}</li>)}
+                                                </ul>
+                                                {plan.current ? <Button variant="secondary" className="w-full mt-4" disabled>Plan actuel</Button> : <Button variant="ghost" className="w-full mt-4">Choisir</Button>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                            </div>
+                        );
+
+                    case 'security':
+                        return (
+                            <div className="space-y-6">
+                                <Card title="Mot de passe" actions={<Button>Modifier</Button>}>
+                                    <p className="text-gray-600">Dernière modification: il y a 3 mois</p>
+                                </Card>
+                                <Card title="Authentification à deux facteurs">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-medium">2FA désactivée</p>
+                                            <p className="text-sm text-gray-500">Ajoutez une couche de sécurité supplémentaire</p>
+                                        </div>
+                                        <Button>Activer</Button>
+                                    </div>
+                                </Card>
+                                <Card title="Sessions actives">
+                                    <div className="space-y-3">
+                                        {[
+                                            { device: 'Chrome sur MacOS', location: 'Paris, France', current: true },
+                                            { device: 'Safari sur iPhone', location: 'Lyon, France', current: false },
+                                        ].map((session, i) => (
+                                            <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                <div>
+                                                    <p className="font-medium">{session.device}</p>
+                                                    <p className="text-sm text-gray-500">{session.location}</p>
+                                                </div>
+                                                {session.current ? <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Session actuelle</span> : <Button variant="ghost" size="sm">Déconnecter</Button>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                                <Card title="Zone de danger">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-medium text-red-600">Supprimer le compte</p>
+                                            <p className="text-sm text-gray-500">Cette action est irréversible</p>
+                                        </div>
+                                        <Button variant="danger">Supprimer</Button>
+                                    </div>
+                                </Card>
+                            </div>
+                        );
+
+                    default:
+                        return null;
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <header className="bg-white border-b px-6 py-4 sticky top-0 z-20">
+                        <div className="flex items-center gap-4">
+                            <a href="/" className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-lg flex items-center justify-center">
+                                    <span className="text-black font-bold text-sm">R</span>
+                                </div>
+                                <span className="font-bold">Routz</span>
+                            </a>
+                            <span className="text-gray-300">|</span>
+                            <h1 className="text-lg font-semibold">Paramètres</h1>
+                        </div>
+                    </header>
+
+                    <div className="flex">
+                        {/* Sidebar */}
+                        <aside className="w-64 bg-white border-r min-h-[calc(100vh-64px)] p-4 sticky top-16">
+                            <nav className="space-y-1">
+                                {tabs.map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-colors ${activeTab === tab.id ? 'bg-[#00FF88] text-black font-medium' : 'hover:bg-gray-100 text-gray-700'}`}
+                                    >
+                                        <span>{tab.icon}</span>
+                                        <span>{tab.label}</span>
+                                    </button>
+                                ))}
+                            </nav>
+                        </aside>
+
+                        {/* Main Content */}
+                        <main className="flex-1 p-6 max-w-4xl">
+                            <div className="mb-6">
+                                <h2 className="text-2xl font-bold text-gray-900">{tabs.find(t => t.id === activeTab)?.label}</h2>
+                            </div>
+                            {renderTabContent()}
+                        </main>
+                    </div>
+
+                    {/* Toast */}
+                    {toast && (
+                        <div className={`fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white flex items-center gap-2`}>
+                            <span>{toast.type === 'success' ? '✓' : '✕'}</span>
+                            {toast.message}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<SettingsApp />);
+    </script>
+</body>
+</html>

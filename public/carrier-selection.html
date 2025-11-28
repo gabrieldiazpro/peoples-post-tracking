@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Sélection Transporteur IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>* { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+        const { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer } = Recharts;
+
+        const CarrierSelectionPage = () => {
+            const [formData, setFormData] = useState({
+                originPostalCode: '75001', destPostalCode: '69001',
+                weight: 2.5, length: 30, width: 20, height: 15, value: 150,
+                deliveryType: 'standard', priority: null
+            });
+            const [recommendation, setRecommendation] = useState(null);
+            const [loading, setLoading] = useState(false);
+
+            const handleAnalyze = async () => {
+                setLoading(true);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                const mockRecommendation = {
+                    recommended: {
+                        carrier: { id: 'chronopost', name: 'Chronopost', logo: '⚡' },
+                        score: 92,
+                        pricing: { totalPrice: 8.90 },
+                        estimatedDelivery: { daysRange: '1-2 jours' },
+                        confidence: { percentage: 95 },
+                        reasons: ['Taux de livraison 97.2%', 'Délai rapide ~1.5j', 'Zone performante']
+                    },
+                    alternatives: [
+                        { carrier: { id: 'colissimo', name: 'Colissimo', logo: '📦' }, score: 87, pricing: { totalPrice: 6.50 }, estimatedDelivery: { daysRange: '2-3 jours' }, comparedToBest: { priceDifference: '-2.40€', tradeoffs: ['Moins cher'] } },
+                        { carrier: { id: 'mondial_relay', name: 'Mondial Relay', logo: '🏪' }, score: 78, pricing: { totalPrice: 4.20 }, estimatedDelivery: { daysRange: '4-5 jours' }, comparedToBest: { priceDifference: '-4.70€', tradeoffs: ['Économique'] } },
+                        { carrier: { id: 'dhl', name: 'DHL Express', logo: '✈️' }, score: 89, pricing: { totalPrice: 12.50 }, estimatedDelivery: { daysRange: '1-2 jours' }, comparedToBest: { priceDifference: '+3.60€', tradeoffs: ['Suivi détaillé'] } }
+                    ],
+                    factors: {
+                        price: { weight: '30%', score: 75 },
+                        speed: { weight: '25%', score: 95 },
+                        reliability: { weight: '25%', score: 97 },
+                        zone: { weight: '10%', score: 92 },
+                        preference: { weight: '10%', score: 50 }
+                    },
+                    metadata: { dataPoints: 1250 }
+                };
+
+                if (formData.priority === 'price') {
+                    mockRecommendation.recommended = { carrier: { id: 'mondial_relay', name: 'Mondial Relay', logo: '🏪' }, score: 85, pricing: { totalPrice: 4.20 }, estimatedDelivery: { daysRange: '4-5 jours' }, confidence: { percentage: 90 }, reasons: ['Prix le plus bas', 'Bon rapport qualité/prix'] };
+                }
+                setRecommendation(mockRecommendation);
+                setLoading(false);
+            };
+
+            const ScoreRing = ({ score, size = 70 }) => {
+                const color = score >= 90 ? '#10B981' : score >= 80 ? '#34D399' : score >= 70 ? '#FBBF24' : '#EF4444';
+                const radius = (size - 8) / 2;
+                const circumference = radius * 2 * Math.PI;
+                const progress = (score / 100) * circumference;
+                return (
+                    <div className="relative" style={{ width: size, height: size }}>
+                        <svg width={size} height={size} className="transform -rotate-90">
+                            <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="#E5E7EB" strokeWidth="6" />
+                            <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={color} strokeWidth="6" strokeDasharray={`${progress} ${circumference}`} strokeLinecap="round" />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-lg font-bold" style={{ color }}>{score}</span>
+                        </div>
+                    </div>
+                );
+            };
+
+            const radarData = recommendation ? [
+                { factor: 'Prix', score: recommendation.factors.price.score },
+                { factor: 'Vitesse', score: recommendation.factors.speed.score },
+                { factor: 'Fiabilité', score: recommendation.factors.reliability.score },
+                { factor: 'Zone', score: recommendation.factors.zone.score },
+                { factor: 'Préf.', score: recommendation.factors.preference.score }
+            ] : [];
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+                        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                    <span className="text-black font-bold">R</span>
+                                </div>
+                                <div>
+                                    <h1 className="font-semibold text-gray-900">Sélection Transporteur IA</h1>
+                                    <p className="text-xs text-gray-500">Recommandation intelligente</p>
+                                </div>
+                            </div>
+                            <span className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm">🤖 Powered by AI</span>
+                        </div>
+                    </header>
+
+                    <div className="max-w-7xl mx-auto px-4 py-6">
+                        <div className="grid grid-cols-3 gap-6">
+                            {/* Form */}
+                            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                                <h3 className="font-semibold text-gray-900 mb-4">📦 Détails expédition</h3>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">CP Origine</label>
+                                            <input type="text" value={formData.originPostalCode} onChange={e => setFormData({...formData, originPostalCode: e.target.value})}
+                                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">CP Destination</label>
+                                            <input type="text" value={formData.destPostalCode} onChange={e => setFormData({...formData, destPostalCode: e.target.value})}
+                                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Poids (kg)</label>
+                                        <input type="number" step="0.1" value={formData.weight} onChange={e => setFormData({...formData, weight: parseFloat(e.target.value)})}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {['length', 'width', 'height'].map(dim => (
+                                            <div key={dim}>
+                                                <label className="block text-xs text-gray-500 mb-1">{dim === 'length' ? 'L' : dim === 'width' ? 'l' : 'H'} (cm)</label>
+                                                <input type="number" value={formData[dim]} onChange={e => setFormData({...formData, [dim]: parseInt(e.target.value)})}
+                                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Valeur (€)</label>
+                                        <input type="number" value={formData.value} onChange={e => setFormData({...formData, value: parseFloat(e.target.value)})}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-2">Type</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {['express', 'standard', 'economy'].map(type => (
+                                                <button key={type} onClick={() => setFormData({...formData, deliveryType: type})}
+                                                    className={`px-3 py-2 rounded-lg text-xs font-medium border ${formData.deliveryType === type ? 'bg-[#00FF88] border-[#00FF88] text-black' : 'border-gray-200'}`}>
+                                                    {type === 'express' ? '⚡' : type === 'standard' ? '📦' : '💰'} {type}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-2">Priorité</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[{ key: 'price', icon: '💰' }, { key: 'speed', icon: '⚡' }, { key: 'reliability', icon: '🛡️' }].map(p => (
+                                                <button key={p.key} onClick={() => setFormData({...formData, priority: formData.priority === p.key ? null : p.key})}
+                                                    className={`px-2 py-2 rounded-lg text-xs border ${formData.priority === p.key ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200'}`}>
+                                                    {p.icon} {p.key}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <button onClick={handleAnalyze} disabled={loading}
+                                        className="w-full py-3 bg-gradient-to-r from-[#00FF88] to-[#00D4AA] text-black font-semibold rounded-xl disabled:opacity-50">
+                                        {loading ? '🔄 Analyse...' : '🤖 Analyser'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Results */}
+                            <div className="col-span-2">
+                                {recommendation ? (
+                                    <div className="space-y-4">
+                                        {/* Best */}
+                                        <div className="bg-gradient-to-r from-[#00FF88]/10 to-[#00D4AA]/10 rounded-2xl border-2 border-[#00FF88] p-6">
+                                            <span className="px-2 py-1 bg-[#00FF88] text-black text-xs font-bold rounded mb-3 inline-block">RECOMMANDÉ</span>
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-3xl shadow-sm">{recommendation.recommended.carrier.logo}</div>
+                                                    <div>
+                                                        <h3 className="text-xl font-bold text-gray-900">{recommendation.recommended.carrier.name}</h3>
+                                                        <p className="text-sm text-gray-500">Délai: {recommendation.recommended.estimatedDelivery.daysRange}</p>
+                                                        <div className="flex gap-2 mt-2">
+                                                            {recommendation.recommended.reasons.map((r, i) => (
+                                                                <span key={i} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">✓ {r}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <ScoreRing score={recommendation.recommended.score} />
+                                                    <p className="text-2xl font-bold text-gray-900 mt-2">{recommendation.recommended.pricing.totalPrice}€</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Alternatives */}
+                                        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                                            <h3 className="font-semibold text-gray-900 mb-4">Alternatives</h3>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                {recommendation.alternatives.map(alt => (
+                                                    <div key={alt.carrier.id} className="p-4 border border-gray-100 rounded-xl hover:border-gray-300 cursor-pointer">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-2xl">{alt.carrier.logo}</span>
+                                                                <span className="font-medium text-sm">{alt.carrier.name}</span>
+                                                            </div>
+                                                            <ScoreRing score={alt.score} size={40} />
+                                                        </div>
+                                                        <div className="text-sm space-y-1">
+                                                            <div className="flex justify-between"><span className="text-gray-500">Prix</span><span className="font-medium">{alt.pricing.totalPrice}€</span></div>
+                                                            <div className="flex justify-between"><span className="text-gray-500">Délai</span><span>{alt.estimatedDelivery.daysRange}</span></div>
+                                                        </div>
+                                                        {alt.comparedToBest.tradeoffs.length > 0 && (
+                                                            <div className="mt-2">
+                                                                {alt.comparedToBest.tradeoffs.map((t, i) => (
+                                                                    <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded mr-1">{t}</span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Radar */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                                                <h3 className="font-semibold text-gray-900 mb-4">📊 Analyse</h3>
+                                                <ResponsiveContainer width="100%" height={180}>
+                                                    <RadarChart data={radarData}>
+                                                        <PolarGrid stroke="#E5E7EB" />
+                                                        <PolarAngleAxis dataKey="factor" tick={{ fontSize: 11 }} />
+                                                        <Radar dataKey="score" stroke="#00FF88" fill="#00FF88" fillOpacity={0.3} />
+                                                    </RadarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                                                <h3 className="font-semibold text-gray-900 mb-4">⚙️ Facteurs</h3>
+                                                <div className="space-y-3">
+                                                    {Object.entries(recommendation.factors).map(([key, f]) => (
+                                                        <div key={key} className="flex items-center justify-between">
+                                                            <span className="text-sm text-gray-600 capitalize">{key} ({f.weight})</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-20 h-2 bg-gray-100 rounded-full"><div className="h-full bg-[#00FF88] rounded-full" style={{ width: `${f.score}%` }} /></div>
+                                                                <span className="text-sm font-medium w-6">{f.score}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <p className="text-xs text-gray-400 mt-4">Basé sur {recommendation.metadata.dataPoints} expéditions</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white rounded-2xl border border-gray-100 p-12 h-full flex flex-col items-center justify-center text-center">
+                                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center text-4xl mb-4">🤖</div>
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Prêt pour l'analyse</h3>
+                                        <p className="text-gray-500">Renseignez les détails et cliquez sur "Analyser"</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<CarrierSelectionPage />);
+    </script>
+</body>
+</html>

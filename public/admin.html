@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Administration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>* { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+        const { AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } = Recharts;
+
+        const AdminDashboard = () => {
+            const [activeTab, setActiveTab] = useState('overview');
+            const [sidebarOpen, setSidebarOpen] = useState(true);
+
+            // Mock data
+            const stats = {
+                organizations: 156,
+                users: 892,
+                shipments: 45230,
+                revenue: 125890,
+                apiCalls: 2340000,
+                activeWebhooks: 234
+            };
+
+            const revenueData = [
+                { month: 'Jan', revenue: 8500, shipments: 3200 },
+                { month: 'Fév', revenue: 9200, shipments: 3800 },
+                { month: 'Mar', revenue: 11500, shipments: 4500 },
+                { month: 'Avr', revenue: 10800, shipments: 4200 },
+                { month: 'Mai', revenue: 12500, shipments: 5100 },
+                { month: 'Juin', revenue: 14200, shipments: 5800 },
+            ];
+
+            const planDistribution = [
+                { name: 'Free', value: 89, color: '#94A3B8' },
+                { name: 'Starter', value: 42, color: '#60A5FA' },
+                { name: 'Pro', value: 18, color: '#34D399' },
+                { name: 'Enterprise', value: 7, color: '#A78BFA' },
+            ];
+
+            const carrierUsage = [
+                { carrier: 'Colissimo', shipments: 12500, percentage: 28 },
+                { carrier: 'Chronopost', shipments: 9800, percentage: 22 },
+                { carrier: 'Mondial Relay', shipments: 8200, percentage: 18 },
+                { carrier: 'DHL', shipments: 6500, percentage: 14 },
+                { carrier: 'UPS', shipments: 4200, percentage: 9 },
+                { carrier: 'Autres', shipments: 4030, percentage: 9 },
+            ];
+
+            const recentOrgs = [
+                { id: 1, name: 'TechShop Paris', plan: 'Pro', users: 12, shipments: 856, created: '2024-01-15' },
+                { id: 2, name: 'Mode Express', plan: 'Starter', users: 4, shipments: 234, created: '2024-01-14' },
+                { id: 3, name: 'BioBoutique', plan: 'Free', users: 1, shipments: 45, created: '2024-01-14' },
+                { id: 4, name: 'ElectroMax', plan: 'Enterprise', users: 28, shipments: 2340, created: '2024-01-13' },
+                { id: 5, name: 'SportZone', plan: 'Pro', users: 8, shipments: 567, created: '2024-01-12' },
+            ];
+
+            const systemHealth = [
+                { service: 'API Server', status: 'healthy', uptime: '99.99%', latency: '45ms' },
+                { service: 'Database', status: 'healthy', uptime: '99.98%', latency: '12ms' },
+                { service: 'Redis Cache', status: 'healthy', uptime: '100%', latency: '2ms' },
+                { service: 'WebSocket', status: 'healthy', uptime: '99.95%', latency: '8ms' },
+                { service: 'Workers', status: 'healthy', uptime: '99.90%', latency: '-' },
+            ];
+
+            const NavItem = ({ icon, label, tab, badge }) => (
+                <button onClick={() => setActiveTab(tab)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${activeTab === tab ? 'bg-[#00FF88] text-black font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
+                    <span className="text-xl">{icon}</span>
+                    {sidebarOpen && <span className="flex-1">{label}</span>}
+                    {sidebarOpen && badge && <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{badge}</span>}
+                </button>
+            );
+
+            const StatCard = ({ icon, label, value, change, color }) => (
+                <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <span className="text-2xl">{icon}</span>
+                        {change && <span className={`text-sm ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>{change > 0 ? '+' : ''}{change}%</span>}
+                    </div>
+                    <p className="text-3xl font-bold" style={{ color }}>{typeof value === 'number' ? value.toLocaleString() : value}</p>
+                    <p className="text-sm text-gray-500 mt-1">{label}</p>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen bg-gray-100 flex">
+                    {/* Sidebar */}
+                    <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all ${sidebarOpen ? 'w-64' : 'w-20'}`}>
+                        <div className="p-4 border-b border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                    <span className="text-black font-bold">R</span>
+                                </div>
+                                {sidebarOpen && <span className="font-bold text-gray-900">Routz Admin</span>}
+                            </div>
+                        </div>
+
+                        <nav className="flex-1 p-4 space-y-2">
+                            <NavItem icon="📊" label="Overview" tab="overview" />
+                            <NavItem icon="🏢" label="Organizations" tab="organizations" />
+                            <NavItem icon="👥" label="Users" tab="users" />
+                            <NavItem icon="📦" label="Shipments" tab="shipments" />
+                            <NavItem icon="🚚" label="Carriers" tab="carriers" />
+                            <NavItem icon="💳" label="Billing" tab="billing" />
+                            <NavItem icon="🔗" label="API & Webhooks" tab="api" />
+                            <NavItem icon="⚙️" label="Settings" tab="settings" />
+                            <NavItem icon="🔔" label="Alerts" tab="alerts" badge="3" />
+                        </nav>
+
+                        <div className="p-4 border-t border-gray-100">
+                            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="w-full flex items-center justify-center gap-2 text-gray-500 hover:text-gray-900">
+                                {sidebarOpen ? '◀ Réduire' : '▶'}
+                            </button>
+                        </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="flex-1 overflow-auto">
+                        <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h1 className="text-xl font-semibold text-gray-900">
+                                        {activeTab === 'overview' && 'Dashboard Overview'}
+                                        {activeTab === 'organizations' && 'Organizations'}
+                                        {activeTab === 'users' && 'Users Management'}
+                                        {activeTab === 'shipments' && 'Shipments'}
+                                        {activeTab === 'carriers' && 'Carriers'}
+                                        {activeTab === 'billing' && 'Billing & Revenue'}
+                                        {activeTab === 'api' && 'API & Webhooks'}
+                                        {activeTab === 'settings' && 'System Settings'}
+                                        {activeTab === 'alerts' && 'Alerts & Notifications'}
+                                    </h1>
+                                    <p className="text-sm text-gray-500">Administration de la plateforme Routz</p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <button className="p-2 rounded-lg hover:bg-gray-100">🔔</button>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium">A</div>
+                                        <span className="text-sm font-medium">Admin</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div className="p-6">
+                            {activeTab === 'overview' && (
+                                <div className="space-y-6">
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-6 gap-4">
+                                        <StatCard icon="🏢" label="Organizations" value={stats.organizations} change={12} color="#6366F1" />
+                                        <StatCard icon="👥" label="Users" value={stats.users} change={8} color="#8B5CF6" />
+                                        <StatCard icon="📦" label="Shipments (mois)" value={stats.shipments} change={15} color="#00D4AA" />
+                                        <StatCard icon="💰" label="Revenue (€)" value={stats.revenue} change={22} color="#F59E0B" />
+                                        <StatCard icon="🔗" label="API Calls (mois)" value="2.3M" change={18} color="#3B82F6" />
+                                        <StatCard icon="🔔" label="Webhooks actifs" value={stats.activeWebhooks} color="#EC4899" />
+                                    </div>
+
+                                    {/* Charts Row */}
+                                    <div className="grid grid-cols-3 gap-6">
+                                        <div className="col-span-2 bg-white rounded-2xl p-6 border border-gray-100">
+                                            <h3 className="font-semibold text-gray-900 mb-4">📈 Revenue & Shipments</h3>
+                                            <ResponsiveContainer width="100%" height={280}>
+                                                <AreaChart data={revenueData}>
+                                                    <defs>
+                                                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#00FF88" stopOpacity={0.3}/>
+                                                            <stop offset="95%" stopColor="#00FF88" stopOpacity={0}/>
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
+                                                    <YAxis stroke="#9CA3AF" fontSize={12} />
+                                                    <Tooltip />
+                                                    <Area type="monotone" dataKey="revenue" stroke="#00FF88" fill="url(#colorRevenue)" strokeWidth={2} name="Revenue (€)" />
+                                                    <Line type="monotone" dataKey="shipments" stroke="#6366F1" strokeWidth={2} dot={false} name="Shipments" />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                                            <h3 className="font-semibold text-gray-900 mb-4">📊 Distribution Plans</h3>
+                                            <ResponsiveContainer width="100%" height={200}>
+                                                <PieChart>
+                                                    <Pie data={planDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                                                        {planDistribution.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                                                    </Pie>
+                                                    <Tooltip />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                            <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                                                {planDistribution.map((p, i) => (
+                                                    <div key={i} className="flex items-center gap-1 text-xs">
+                                                        <div className="w-3 h-3 rounded" style={{ backgroundColor: p.color }} />
+                                                        <span>{p.name}: {p.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Row */}
+                                    <div className="grid grid-cols-2 gap-6">
+                                        {/* Recent Organizations */}
+                                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                                            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                                                <h3 className="font-semibold text-gray-900">🏢 Recent Organizations</h3>
+                                                <button className="text-sm text-blue-600 hover:underline">View all</button>
+                                            </div>
+                                            <table className="w-full">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Organization</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Plan</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Users</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Shipments</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {recentOrgs.map(org => (
+                                                        <tr key={org.id} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 font-medium text-gray-900">{org.name}</td>
+                                                            <td className="px-4 py-3">
+                                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                    org.plan === 'Enterprise' ? 'bg-purple-100 text-purple-700' :
+                                                                    org.plan === 'Pro' ? 'bg-green-100 text-green-700' :
+                                                                    org.plan === 'Starter' ? 'bg-blue-100 text-blue-700' :
+                                                                    'bg-gray-100 text-gray-700'
+                                                                }`}>{org.plan}</span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-gray-600">{org.users}</td>
+                                                            <td className="px-4 py-3 text-gray-600">{org.shipments.toLocaleString()}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* System Health */}
+                                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                                            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                                                <h3 className="font-semibold text-gray-900">💚 System Health</h3>
+                                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">All systems operational</span>
+                                            </div>
+                                            <table className="w-full">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Service</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Uptime</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Latency</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {systemHealth.map((service, i) => (
+                                                        <tr key={i} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 font-medium text-gray-900">{service.service}</td>
+                                                            <td className="px-4 py-3">
+                                                                <span className="flex items-center gap-2">
+                                                                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                                                    <span className="text-green-600 text-sm">Healthy</span>
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-gray-600">{service.uptime}</td>
+                                                            <td className="px-4 py-3 text-gray-600">{service.latency}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    {/* Carrier Usage */}
+                                    <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                                        <h3 className="font-semibold text-gray-900 mb-4">🚚 Carrier Usage Distribution</h3>
+                                        <div className="grid grid-cols-6 gap-4">
+                                            {carrierUsage.map((carrier, i) => (
+                                                <div key={i} className="text-center">
+                                                    <div className="relative w-20 h-20 mx-auto mb-2">
+                                                        <svg className="w-20 h-20 transform -rotate-90">
+                                                            <circle cx="40" cy="40" r="35" fill="none" stroke="#E5E7EB" strokeWidth="6" />
+                                                            <circle cx="40" cy="40" r="35" fill="none" stroke="#00FF88" strokeWidth="6"
+                                                                strokeDasharray={`${carrier.percentage * 2.2} 220`} strokeLinecap="round" />
+                                                        </svg>
+                                                        <span className="absolute inset-0 flex items-center justify-center font-bold text-gray-900">{carrier.percentage}%</span>
+                                                    </div>
+                                                    <p className="font-medium text-gray-900 text-sm">{carrier.carrier}</p>
+                                                    <p className="text-xs text-gray-500">{carrier.shipments.toLocaleString()}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'organizations' && (
+                                <div className="bg-white rounded-2xl border border-gray-100">
+                                    <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <input type="text" placeholder="Search organizations..." className="px-4 py-2 border border-gray-200 rounded-lg w-64" />
+                                            <select className="px-4 py-2 border border-gray-200 rounded-lg">
+                                                <option>All Plans</option>
+                                                <option>Free</option>
+                                                <option>Starter</option>
+                                                <option>Pro</option>
+                                                <option>Enterprise</option>
+                                            </select>
+                                        </div>
+                                        <button className="px-4 py-2 bg-[#00FF88] text-black font-medium rounded-lg">+ Add Organization</button>
+                                    </div>
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Organization</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Users</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shipments</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {recentOrgs.map(org => (
+                                                <tr key={org.id} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold">
+                                                                {org.name[0]}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-gray-900">{org.name}</p>
+                                                                <p className="text-xs text-gray-500">ID: org_{org.id}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                            org.plan === 'Enterprise' ? 'bg-purple-100 text-purple-700' :
+                                                            org.plan === 'Pro' ? 'bg-green-100 text-green-700' :
+                                                            org.plan === 'Starter' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-gray-100 text-gray-700'
+                                                        }`}>{org.plan}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-gray-600">{org.users}</td>
+                                                    <td className="px-6 py-4 text-gray-600">{org.shipments.toLocaleString()}</td>
+                                                    <td className="px-6 py-4 text-gray-500 text-sm">{org.created}</td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <button className="p-2 hover:bg-gray-100 rounded">👁️</button>
+                                                            <button className="p-2 hover:bg-gray-100 rounded">✏️</button>
+                                                            <button className="p-2 hover:bg-gray-100 rounded text-red-500">🗑️</button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {activeTab !== 'overview' && activeTab !== 'organizations' && (
+                                <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">🚧</div>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Section en construction</h3>
+                                    <p className="text-gray-500">Cette section sera disponible prochainement.</p>
+                                </div>
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<AdminDashboard />);
+    </script>
+</body>
+</html>

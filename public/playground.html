@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - API Playground</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slideIn { animation: slideIn 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen text-gray-100">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+
+        const endpoints = [
+            { method: 'GET', path: '/api/v1/shipments', name: 'List Shipments', params: ['page', 'limit', 'status'] },
+            { method: 'GET', path: '/api/v1/shipments/:id', name: 'Get Shipment' },
+            { method: 'POST', path: '/api/v1/shipments', name: 'Create Shipment', body: true },
+            { method: 'DELETE', path: '/api/v1/shipments/:id', name: 'Cancel Shipment' },
+            { method: 'GET', path: '/api/v1/orders', name: 'List Orders', params: ['page', 'limit'] },
+            { method: 'POST', path: '/api/v1/rates', name: 'Get Rates', body: true },
+            { method: 'GET', path: '/api/v1/carriers', name: 'List Carriers' },
+            { method: 'GET', path: '/api/v1/webhooks', name: 'List Webhooks' },
+            { method: 'POST', path: '/api/v1/webhooks', name: 'Create Webhook', body: true },
+            { method: 'GET', path: '/api/v1/analytics/dashboard', name: 'Dashboard Stats' },
+        ];
+
+        const sampleBodies = {
+            'Create Shipment': `{
+  "carrier": "colissimo",
+  "service": "standard",
+  "sender": {
+    "firstName": "Ma", "lastName": "Boutique",
+    "line1": "123 Rue Commerce", "city": "Paris",
+    "postalCode": "75001", "country": "FR"
+  },
+  "recipient": {
+    "firstName": "Jean", "lastName": "Dupont",
+    "line1": "456 Avenue Client", "city": "Lyon",
+    "postalCode": "69001", "country": "FR"
+  },
+  "parcels": [{ "weight": 1.5 }]
+}`,
+            'Get Rates': `{
+  "sender": { "postalCode": "75001", "country": "FR" },
+  "recipient": { "postalCode": "69001", "country": "FR" },
+  "parcels": [{ "weight": 2.0 }]
+}`,
+            'Create Webhook': `{
+  "url": "https://example.com/webhook",
+  "events": ["shipment.delivered"],
+  "active": true
+}`
+        };
+
+        const sampleResponses = {
+            'List Shipments': { data: [{ id: "shp_abc123", trackingNumber: "6L123456789FR", status: "delivered" }], pagination: { page: 1, total: 127 } },
+            'List Carriers': { data: [{ code: "colissimo", name: "Colissimo" }, { code: "chronopost", name: "Chronopost" }, { code: "dhl", name: "DHL Express" }] },
+            'Dashboard Stats': { shipmentsToday: 47, deliveryRate: 94.7, averageDeliveryTime: 2.3 }
+        };
+
+        const APIPlayground = () => {
+            const [selected, setSelected] = useState(endpoints[0]);
+            const [apiKey, setApiKey] = useState('sk_test_xxxxxxxxxxxx');
+            const [body, setBody] = useState('');
+            const [response, setResponse] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [time, setTime] = useState(null);
+
+            const handleSelect = (e) => {
+                setSelected(e);
+                setBody(sampleBodies[e.name] || '');
+                setResponse(null);
+            };
+
+            const execute = async () => {
+                setLoading(true);
+                const start = Date.now();
+                await new Promise(r => setTimeout(r, 300 + Math.random() * 400));
+                setResponse({ status: 200, data: sampleResponses[selected.name] || { success: true, message: "Operation completed" } });
+                setTime(Date.now() - start);
+                setLoading(false);
+            };
+
+            const methodColors = { GET: 'text-green-400 bg-green-500/20', POST: 'text-blue-400 bg-blue-500/20', DELETE: 'text-red-400 bg-red-500/20' };
+
+            return (
+                <div className="min-h-screen bg-gray-900">
+                    <header className="bg-gray-800 border-b border-gray-700">
+                        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                    <span className="text-black font-bold">R</span>
+                                </div>
+                                <div>
+                                    <h1 className="font-semibold text-white">API Playground</h1>
+                                    <p className="text-xs text-gray-400">Testez l'API en direct</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-2">
+                                <span className="text-xs text-gray-400">API Key:</span>
+                                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
+                                    className="bg-transparent text-sm mono text-gray-300 w-48 outline-none" />
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="max-w-6xl mx-auto px-4 py-6 flex gap-6">
+                        {/* Endpoints */}
+                        <div className="w-64 shrink-0 bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
+                            <div className="p-4 border-b border-gray-700">
+                                <h2 className="font-semibold text-white">Endpoints</h2>
+                            </div>
+                            <div className="p-2 space-y-1 max-h-[500px] overflow-y-auto">
+                                {endpoints.map((e, i) => (
+                                    <button key={i} onClick={() => handleSelect(e)}
+                                        className={`w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-sm ${selected === e ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}>
+                                        <span className={`px-1.5 py-0.5 rounded text-xs font-bold mono ${methodColors[e.method]}`}>{e.method}</span>
+                                        <span className="text-gray-300 truncate text-xs">{e.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Main */}
+                        <div className="flex-1 space-y-4">
+                            {/* Request */}
+                            <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden animate-slideIn">
+                                <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <span className={`px-2 py-1 rounded text-xs font-bold mono ${methodColors[selected.method]}`}>{selected.method}</span>
+                                        <span className="mono text-gray-300 text-sm">{selected.path}</span>
+                                    </div>
+                                    <button onClick={execute} disabled={loading}
+                                        className="px-4 py-2 bg-[#00FF88] text-black font-semibold rounded-lg hover:bg-[#00D4AA] disabled:opacity-50">
+                                        {loading ? '⏳ Envoi...' : '▶ Envoyer'}
+                                    </button>
+                                </div>
+                                {selected.body && (
+                                    <div className="p-4">
+                                        <h3 className="text-sm font-medium text-gray-400 mb-2">Request Body</h3>
+                                        <textarea value={body} onChange={e => setBody(e.target.value)}
+                                            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-sm mono text-white min-h-48 resize-y"
+                                            spellCheck={false} />
+                                    </div>
+                                )}
+                                {selected.params && (
+                                    <div className="p-4 border-t border-gray-700">
+                                        <h3 className="text-sm font-medium text-gray-400 mb-2">Query Parameters</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {selected.params.map(p => (
+                                                <div key={p} className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-2">
+                                                    <span className="text-xs mono text-gray-400">{p}:</span>
+                                                    <input type="text" placeholder="value" className="bg-transparent text-sm mono text-white w-20 outline-none" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Response */}
+                            {response && (
+                                <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden animate-slideIn">
+                                    <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">
+                                                {response.status} OK
+                                            </span>
+                                            {time && <span className="text-xs text-gray-500">{time}ms</span>}
+                                        </div>
+                                        <button onClick={() => navigator.clipboard.writeText(JSON.stringify(response.data, null, 2))}
+                                            className="text-xs text-gray-400 hover:text-white">📋 Copier</button>
+                                    </div>
+                                    <div className="p-4 max-h-80 overflow-y-auto">
+                                        <pre className="text-sm mono text-gray-300 whitespace-pre-wrap">
+                                            {JSON.stringify(response.data, null, 2)}
+                                        </pre>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* cURL */}
+                            <div className="bg-gray-800 rounded-2xl border border-gray-700 p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="font-medium text-white text-sm">cURL</h3>
+                                    <button className="text-xs text-gray-400 hover:text-white">📋 Copier</button>
+                                </div>
+                                <pre className="text-sm mono text-green-400">
+{`curl -X ${selected.method} 'https://api.routz.com${selected.path}' \\
+  -H 'Authorization: Bearer ${apiKey}' \\
+  -H 'Content-Type: application/json'`}
+                                </pre>
+                            </div>
+
+                            {/* Code Examples */}
+                            <div className="bg-gray-800 rounded-2xl border border-gray-700 p-4">
+                                <h3 className="font-medium text-white text-sm mb-3">Code Examples</h3>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <p className="text-xs text-gray-400 mb-2">JavaScript</p>
+                                        <pre className="text-xs mono text-blue-400 bg-gray-700/50 rounded-lg p-3 overflow-x-auto">
+{`const res = await fetch(
+  'https://api.routz.com${selected.path}',
+  {
+    method: '${selected.method}',
+    headers: {
+      'Authorization': 'Bearer sk_...',
+      'Content-Type': 'application/json'
+    }
+  }
+);`}
+                                        </pre>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-400 mb-2">Python</p>
+                                        <pre className="text-xs mono text-yellow-400 bg-gray-700/50 rounded-lg p-3 overflow-x-auto">
+{`import requests
+
+res = requests.${selected.method.toLowerCase()}(
+  'https://api.routz.com${selected.path}',
+  headers={
+    'Authorization': 'Bearer sk_...'
+  }
+)`}
+                                        </pre>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-400 mb-2">PHP</p>
+                                        <pre className="text-xs mono text-purple-400 bg-gray-700/50 rounded-lg p-3 overflow-x-auto">
+{`$client = new GuzzleHttp\\Client();
+$res = $client->request(
+  '${selected.method}',
+  'https://api.routz.com${selected.path}',
+  ['headers' => [
+    'Authorization' => 'Bearer sk_...'
+  ]]
+);`}
+                                        </pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<APIPlayground />);
+    </script>
+</body>
+</html>

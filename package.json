@@ -1,44 +1,129 @@
 {
-  "name": "routz-tracking-system",
-  "version": "1.0.0",
-  "description": "Routz Branded Tracking & Returns Platform - Complete logistics solution for e-commerce",
+  "name": "routz-platform",
+  "version": "4.5.0",
+  "description": "Peoples Post - Enterprise Logistics Platform: Multi-carrier shipping, tracking, returns management",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "db:migrate": "psql $DATABASE_URL < schema-complete.sql",
-    "db:seed": "node scripts/seed.js"
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "migrate": "psql $DATABASE_URL < devops/init.sql",
+    "migrate:full": "psql $DATABASE_URL < schema-complete.sql",
+    "seed": "node devops/seed.js",
+    "build": "npm run lint",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
   },
   "keywords": [
+    "logistics",
     "shipping",
     "tracking",
     "returns",
-    "logistics",
-    "e-commerce"
+    "ecommerce",
+    "fulfillment",
+    "wms",
+    "erp",
+    "api"
   ],
-  "author": "Routz",
+  "author": "Peoples Post",
   "license": "MIT",
-  "dependencies": {
-    "axios": "^1.13.2",
-    "compression": "^1.7.4",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "express-rate-limit": "^7.1.5",
-    "handlebars": "^4.7.8",
-    "helmet": "^7.1.0",
-    "ioredis": "^5.3.2",
-    "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.7",
-    "pg": "^8.11.3",
-    "stripe": "^14.8.0",
-    "twilio": "^4.19.3",
-    "uuid": "^9.0.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
-  },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-handlebars": "^7.1.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "morgan": "^1.10.0",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+
+    "pg": "^8.11.3",
+    "pg-pool": "^3.6.1",
+    "redis": "^4.6.12",
+    "ioredis": "^5.3.2",
+
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "uuid": "^9.0.1",
+    "nanoid": "^5.0.4",
+
+    "ws": "^8.16.0",
+    "socket.io": "^4.7.4",
+
+    "graphql": "^16.8.1",
+    "graphql-http": "^1.22.0",
+    "graphql-subscriptions": "^2.0.0",
+
+    "axios": "^1.6.5",
+    "node-fetch": "^3.3.2",
+    "form-data": "^4.0.0",
+
+    "stripe": "^14.14.0",
+
+    "pdfkit": "^0.14.0",
+    "sharp": "^0.33.2",
+    "jsbarcode": "^3.11.6",
+    "qrcode": "^1.5.3",
+
+    "xml2js": "^0.6.2",
+    "csv-parser": "^3.0.0",
+    "xlsx": "^0.18.5",
+
+    "nodemailer": "^6.9.8",
+    "twilio": "^4.21.0",
+    "web-push": "^3.6.7",
+
+    "bull": "^4.12.2",
+    "agenda": "^5.0.0",
+
+    "winston": "^3.11.0",
+    "prom-client": "^15.1.0",
+
+    "dotenv": "^16.3.1",
+    "joi": "^17.12.0",
+    "lodash": "^4.17.21",
+    "dayjs": "^1.11.10",
+    "crypto-js": "^4.2.0",
+    "multer": "^1.4.5-lts.1",
+    "handlebars": "^4.7.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4",
+    "@types/jest": "^29.5.11",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.4",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "api/**/*.js",
+      "services/**/*.js",
+      "connectors/**/*.js",
+      "!**/node_modules/**"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5"
   }
 }

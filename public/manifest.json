@@ -1,0 +1,51 @@
+{
+  "name": "Routz - Logistique E-commerce",
+  "short_name": "Routz",
+  "description": "Plateforme logistique multi-transporteurs pour e-commerce",
+  "start_url": "/dashboard-v2.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00FF88",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "fr-FR",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%2300FF88' width='192' height='192' rx='40'/><text x='96' y='130' font-size='100' font-weight='bold' text-anchor='middle' fill='black'>R</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%2300FF88' width='512' height='512' rx='100'/><text x='256' y='340' font-size='280' font-weight='bold' text-anchor='middle' fill='black'>R</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouvelle expédition",
+      "short_name": "Expédier",
+      "url": "/shipments.html?action=new"
+    },
+    {
+      "name": "Commandes",
+      "short_name": "Commandes",
+      "url": "/orders.html"
+    },
+    {
+      "name": "Suivi",
+      "short_name": "Suivi",
+      "url": "/tracking.html"
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

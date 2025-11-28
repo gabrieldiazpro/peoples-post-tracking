@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Commandes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Mock Data
+        const mockOrders = [
+            { id: 'ORD-001', order_number: 'WEB-2024-001', source: 'shopify', status: 'pending', customer_name: 'Marie Dupont', customer_email: 'marie@email.com', shipping_address: { city: 'Lyon', postal_code: '69001' }, items: [{ sku: 'TSHIRT-M', name: 'T-shirt M', quantity: 2, price: 29.90 }], total: 139.70, created_at: '2024-01-15T10:30:00Z' },
+            { id: 'ORD-002', order_number: 'WEB-2024-002', source: 'woocommerce', status: 'processing', customer_name: 'Jean Martin', customer_email: 'jean@email.com', shipping_address: { city: 'Paris', postal_code: '75001' }, items: [{ sku: 'PULL-L', name: 'Pull L', quantity: 1, price: 59.90 }], total: 59.90, created_at: '2024-01-15T09:15:00Z' },
+            { id: 'ORD-003', order_number: 'AMZ-2024-003', source: 'amazon', status: 'shipped', customer_name: 'Sophie Bernard', customer_email: 'sophie@email.com', shipping_address: { city: 'Marseille', postal_code: '13001' }, items: [{ sku: 'ROBE-S', name: 'Robe S', quantity: 1, price: 89.90 }], total: 89.90, created_at: '2024-01-14T16:45:00Z', tracking_number: '6L123456789FR' },
+            { id: 'ORD-004', order_number: 'WEB-2024-004', source: 'prestashop', status: 'pending', customer_name: 'Pierre Durand', customer_email: 'pierre@email.com', shipping_address: { city: 'Bordeaux', postal_code: '33000' }, items: [{ sku: 'CHAUSSURE-42', name: 'Chaussures 42', quantity: 1, price: 129.90 }], total: 129.90, created_at: '2024-01-15T08:00:00Z' },
+            { id: 'ORD-005', order_number: 'CDT-2024-005', source: 'cdiscount', status: 'delivered', customer_name: 'Emma Rousseau', customer_email: 'emma@email.com', shipping_address: { city: 'Toulouse', postal_code: '31000' }, items: [{ sku: 'SAC-NR', name: 'Sac Noir', quantity: 1, price: 49.90 }], total: 49.90, created_at: '2024-01-13T14:20:00Z' },
+            { id: 'ORD-006', order_number: 'WEB-2024-006', source: 'shopify', status: 'pending', customer_name: 'Lucas Petit', customer_email: 'lucas@email.com', shipping_address: { city: 'Nice', postal_code: '06000' }, items: [{ sku: 'MONTRE-AR', name: 'Montre', quantity: 1, price: 199.90 }], total: 249.70, created_at: '2024-01-15T11:00:00Z' },
+        ];
+
+        const mockCarriers = [
+            { id: 'colissimo', name: 'Colissimo', services: ['standard', 'expert'] },
+            { id: 'chronopost', name: 'Chronopost', services: ['express', 'classic'] },
+            { id: 'mondial_relay', name: 'Mondial Relay', services: ['standard'] },
+        ];
+
+        // Components
+        const StatusBadge = ({ status }) => {
+            const config = {
+                pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'En attente' },
+                processing: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'En traitement' },
+                shipped: { bg: 'bg-indigo-100', text: 'text-indigo-800', label: 'Expédiée' },
+                delivered: { bg: 'bg-green-100', text: 'text-green-800', label: 'Livrée' },
+                cancelled: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Annulée' }
+            }[status] || { bg: 'bg-gray-100', text: 'text-gray-800', label: status };
+            return <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>{config.label}</span>;
+        };
+
+        const SourceBadge = ({ source }) => {
+            const icons = { shopify: '🛒', woocommerce: '🔮', prestashop: '🎀', amazon: '📦', cdiscount: '🔴' };
+            return (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    <span>{icons[source] || '📋'}</span>
+                    <span className="capitalize">{source}</span>
+                </span>
+            );
+        };
+
+        const Button = ({ children, variant = 'primary', size = 'md', loading, disabled, className = '', ...props }) => {
+            const variants = {
+                primary: 'bg-[#00FF88] hover:bg-[#00E07A] text-black',
+                secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-900',
+                outline: 'border border-gray-300 hover:bg-gray-50 text-gray-700',
+                ghost: 'bg-transparent hover:bg-gray-100 text-gray-700'
+            };
+            const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2', lg: 'px-6 py-3' };
+            return (
+                <button className={`${variants[variant]} ${sizes[size]} rounded-lg font-medium transition-all disabled:opacity-50 flex items-center gap-2 ${className}`} disabled={disabled || loading} {...props}>
+                    {loading && <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                    {children}
+                </button>
+            );
+        };
+
+        const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+            if (!isOpen) return null;
+            const sizeClasses = { sm: 'max-w-md', md: 'max-w-2xl', lg: 'max-w-4xl' };
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay fade-in" onClick={onClose}>
+                    <div className={`bg-white rounded-2xl shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h2 className="text-lg font-semibold">{title}</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">{children}</div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Order Details Modal
+        const OrderDetailsModal = ({ order, onClose, onShip }) => {
+            const [carrier, setCarrier] = useState('');
+            const [service, setService] = useState('');
+            const [shipping, setShipping] = useState(false);
+
+            const handleShip = async () => {
+                if (!carrier || !service) return;
+                setShipping(true);
+                await new Promise(r => setTimeout(r, 1500));
+                onShip(order.id, carrier, service);
+                setShipping(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-xl font-bold">{order.order_number}</h3>
+                                <StatusBadge status={order.status} />
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-gray-500">
+                                <SourceBadge source={order.source} />
+                                <span>{new Date(order.created_at).toLocaleDateString('fr-FR')}</span>
+                            </div>
+                        </div>
+                        <p className="text-2xl font-bold">{order.total.toFixed(2)} €</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 rounded-xl p-4">
+                            <h4 className="font-medium mb-2">👤 Client</h4>
+                            <p className="font-medium">{order.customer_name}</p>
+                            <p className="text-gray-600 text-sm">{order.customer_email}</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-4">
+                            <h4 className="font-medium mb-2">📍 Livraison</h4>
+                            <p className="text-gray-600">{order.shipping_address.city}, {order.shipping_address.postal_code}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="font-medium mb-3">📦 Articles</h4>
+                        <div className="border rounded-xl overflow-hidden">
+                            <table className="w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Produit</th>
+                                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qté</th>
+                                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Prix</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {order.items.map((item, i) => (
+                                        <tr key={i} className="border-t">
+                                            <td className="px-4 py-3">{item.name}</td>
+                                            <td className="px-4 py-3 text-center">{item.quantity}</td>
+                                            <td className="px-4 py-3 text-right">{item.price.toFixed(2)} €</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {order.status === 'pending' && (
+                        <div className="bg-[#00FF88]/10 border border-[#00FF88]/30 rounded-xl p-4">
+                            <h4 className="font-medium mb-3">🚚 Expédier</h4>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <select value={carrier} onChange={e => { setCarrier(e.target.value); setService(''); }} className="px-3 py-2 border rounded-lg">
+                                    <option value="">Transporteur...</option>
+                                    {mockCarriers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                                <select value={service} onChange={e => setService(e.target.value)} disabled={!carrier} className="px-3 py-2 border rounded-lg disabled:bg-gray-100">
+                                    <option value="">Service...</option>
+                                    {carrier && mockCarriers.find(c => c.id === carrier)?.services.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <Button onClick={handleShip} loading={shipping} disabled={!carrier || !service} className="w-full">📦 Créer l'expédition</Button>
+                        </div>
+                    )}
+
+                    {order.tracking_number && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                            <h4 className="font-medium mb-2">📍 Suivi</h4>
+                            <p className="font-mono text-blue-600">{order.tracking_number}</p>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                        <Button variant="ghost" onClick={onClose}>Fermer</Button>
+                        <Button variant="outline">🖨️ Imprimer</Button>
+                    </div>
+                </div>
+            );
+        };
+
+        // Bulk Ship Modal
+        const BulkShipModal = ({ orders, onClose, onShip }) => {
+            const [carrier, setCarrier] = useState('colissimo');
+            const [service, setService] = useState('standard');
+            const [shipping, setShipping] = useState(false);
+            const [progress, setProgress] = useState(0);
+
+            const handleBulkShip = async () => {
+                setShipping(true);
+                for (let i = 0; i < orders.length; i++) {
+                    await new Promise(r => setTimeout(r, 500));
+                    setProgress(Math.round(((i + 1) / orders.length) * 100));
+                }
+                onShip(orders.map(o => o.id), carrier, service);
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-[#00FF88]/20 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">🚚</div>
+                        <h3 className="text-lg font-medium mb-2">Expédition groupée</h3>
+                        <p className="text-gray-500">{orders.length} commandes</p>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-xl p-4 max-h-48 overflow-y-auto">
+                        {orders.map(order => (
+                            <div key={order.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                                <div>
+                                    <p className="font-medium">{order.order_number}</p>
+                                    <p className="text-sm text-gray-500">{order.customer_name}</p>
+                                </div>
+                                <p className="font-medium">{order.total.toFixed(2)} €</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <select value={carrier} onChange={e => setCarrier(e.target.value)} className="px-3 py-2 border rounded-lg">
+                            {mockCarriers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <select value={service} onChange={e => setService(e.target.value)} className="px-3 py-2 border rounded-lg">
+                            {mockCarriers.find(c => c.id === carrier)?.services.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+
+                    {shipping && (
+                        <div className="space-y-2">
+                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div className="h-full bg-[#00FF88] transition-all" style={{ width: `${progress}%` }} />
+                            </div>
+                            <p className="text-sm text-gray-500 text-center">{progress}%</p>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3">
+                        <Button variant="ghost" onClick={onClose} disabled={shipping}>Annuler</Button>
+                        <Button onClick={handleBulkShip} loading={shipping}>📦 Expédier tout</Button>
+                    </div>
+                </div>
+            );
+        };
+
+        // Import Modal
+        const ImportModal = ({ onClose, onImport }) => {
+            const [file, setFile] = useState(null);
+            const [preview, setPreview] = useState([]);
+            const [importing, setImporting] = useState(false);
+
+            const handleFileChange = (e) => {
+                const f = e.target.files[0];
+                if (!f) return;
+                setFile(f);
+                setPreview([
+                    { order_number: 'IMP-001', customer: 'Client 1', total: 89.90 },
+                    { order_number: 'IMP-002', customer: 'Client 2', total: 149.90 },
+                    { order_number: 'IMP-003', customer: 'Client 3', total: 59.90 },
+                ]);
+            };
+
+            const handleImport = async () => {
+                setImporting(true);
+                await new Promise(r => setTimeout(r, 2000));
+                onImport(preview.length);
+                setImporting(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                    {!file ? (
+                        <>
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">📄</div>
+                                <h3 className="text-lg font-medium mb-2">Importer des commandes</h3>
+                                <p className="text-gray-500">CSV ou Excel</p>
+                            </div>
+                            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#00FF88] transition-colors">
+                                <input type="file" accept=".csv,.xlsx" onChange={handleFileChange} className="hidden" id="file-input" />
+                                <label htmlFor="file-input" className="cursor-pointer">
+                                    <div className="text-4xl mb-3">📁</div>
+                                    <p className="text-gray-600">Cliquez pour sélectionner</p>
+                                    <p className="text-sm text-gray-400">CSV, XLSX</p>
+                                </label>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">✓</div>
+                                <div>
+                                    <p className="font-medium">{file.name}</p>
+                                    <p className="text-sm text-gray-500">{preview.length} commandes</p>
+                                </div>
+                            </div>
+                            <div className="border rounded-xl overflow-hidden">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">N°</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Client</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {preview.map((row, i) => (
+                                            <tr key={i} className="border-t">
+                                                <td className="px-4 py-2 font-mono text-sm">{row.order_number}</td>
+                                                <td className="px-4 py-2">{row.customer}</td>
+                                                <td className="px-4 py-2 text-right">{row.total.toFixed(2)} €</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="flex justify-between">
+                                <Button variant="ghost" onClick={() => { setFile(null); setPreview([]); }}>← Retour</Button>
+                                <Button onClick={handleImport} loading={importing}>Importer</Button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        };
+
+        // Main App
+        const OrdersApp = () => {
+            const [orders, setOrders] = useState(mockOrders);
+            const [filters, setFilters] = useState({ search: '', status: '', source: '' });
+            const [selectedIds, setSelectedIds] = useState(new Set());
+            const [selectedOrder, setSelectedOrder] = useState(null);
+            const [showImportModal, setShowImportModal] = useState(false);
+            const [showBulkShipModal, setShowBulkShipModal] = useState(false);
+
+            const filteredOrders = useMemo(() => {
+                return orders.filter(o => {
+                    if (filters.search && !o.order_number.toLowerCase().includes(filters.search.toLowerCase()) && !o.customer_name.toLowerCase().includes(filters.search.toLowerCase())) return false;
+                    if (filters.status && o.status !== filters.status) return false;
+                    if (filters.source && o.source !== filters.source) return false;
+                    return true;
+                });
+            }, [orders, filters]);
+
+            const stats = useMemo(() => ({
+                total: orders.length,
+                pending: orders.filter(o => o.status === 'pending').length,
+                shipped: orders.filter(o => o.status === 'shipped').length,
+                revenue: orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + o.total, 0)
+            }), [orders]);
+
+            const toggleSelection = (id) => {
+                setSelectedIds(prev => {
+                    const next = new Set(prev);
+                    next.has(id) ? next.delete(id) : next.add(id);
+                    return next;
+                });
+            };
+
+            const selectedOrders = orders.filter(o => selectedIds.has(o.id));
+
+            const handleShipOrder = (orderId, carrier, service) => {
+                setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped', tracking_number: `6L${Math.random().toString().slice(2, 13)}FR` } : o));
+                setSelectedOrder(null);
+            };
+
+            const handleBulkShip = (orderIds) => {
+                setOrders(prev => prev.map(o => orderIds.includes(o.id) ? { ...o, status: 'shipped', tracking_number: `6L${Math.random().toString().slice(2, 13)}FR` } : o));
+                setSelectedIds(new Set());
+                setShowBulkShipModal(false);
+            };
+
+            const handleImport = (count) => {
+                const newOrders = Array.from({ length: count }, (_, i) => ({
+                    id: `ORD-IMP-${Date.now()}-${i}`,
+                    order_number: `IMP-${String(orders.length + i + 1).padStart(3, '0')}`,
+                    source: 'manual',
+                    status: 'pending',
+                    customer_name: `Client ${i + 1}`,
+                    customer_email: `client${i + 1}@email.com`,
+                    shipping_address: { city: 'Paris', postal_code: '75001' },
+                    items: [{ name: 'Produit', quantity: 1, price: 49.90 }],
+                    total: 49.90,
+                    created_at: new Date().toISOString()
+                }));
+                setOrders(prev => [...newOrders, ...prev]);
+                setShowImportModal(false);
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <header className="bg-white border-b px-6 py-4 sticky top-0 z-20">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <a href="/" className="flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-lg flex items-center justify-center">
+                                        <span className="text-black font-bold text-sm">R</span>
+                                    </div>
+                                    <span className="font-bold">Routz</span>
+                                </a>
+                                <span className="text-gray-300">|</span>
+                                <h1 className="text-lg font-semibold">Commandes</h1>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Button variant="outline" onClick={() => setShowImportModal(true)}>📥 Importer</Button>
+                                <Button onClick={() => window.location.href = '/shipments.html'}>+ Expédition</Button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="p-6">
+                        {/* Stats */}
+                        <div className="grid grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white rounded-xl p-4 border"><p className="text-sm text-gray-500">Total</p><p className="text-2xl font-bold">{stats.total}</p></div>
+                            <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-100"><p className="text-sm text-yellow-600">En attente</p><p className="text-2xl font-bold text-yellow-700">{stats.pending}</p></div>
+                            <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100"><p className="text-sm text-indigo-600">Expédiées</p><p className="text-2xl font-bold text-indigo-700">{stats.shipped}</p></div>
+                            <div className="bg-green-50 rounded-xl p-4 border border-green-100"><p className="text-sm text-green-600">CA</p><p className="text-2xl font-bold text-green-700">{stats.revenue.toFixed(2)} €</p></div>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="bg-white rounded-xl border p-4 mb-6">
+                            <div className="flex items-center gap-4">
+                                <input type="text" placeholder="🔍 Rechercher..." value={filters.search} onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))} className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#00FF88]" />
+                                <select value={filters.status} onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))} className="px-4 py-2 border rounded-lg">
+                                    <option value="">Tous statuts</option>
+                                    <option value="pending">En attente</option>
+                                    <option value="processing">En traitement</option>
+                                    <option value="shipped">Expédiée</option>
+                                    <option value="delivered">Livrée</option>
+                                </select>
+                                <select value={filters.source} onChange={e => setFilters(prev => ({ ...prev, source: e.target.value }))} className="px-4 py-2 border rounded-lg">
+                                    <option value="">Toutes sources</option>
+                                    <option value="shopify">Shopify</option>
+                                    <option value="woocommerce">WooCommerce</option>
+                                    <option value="amazon">Amazon</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Bulk Actions */}
+                        {selectedIds.size > 0 && (
+                            <div className="bg-gray-900 text-white rounded-xl p-4 mb-4 flex items-center justify-between">
+                                <span>{selectedIds.size} sélectionnée(s)</span>
+                                <div className="flex gap-2">
+                                    <Button variant="secondary" size="sm">📄 Exporter</Button>
+                                    <Button size="sm" onClick={() => setShowBulkShipModal(true)}>🚚 Expédier</Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Table */}
+                        <div className="bg-white rounded-xl border overflow-hidden">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 border-b">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left w-12">
+                                            <input type="checkbox" onChange={() => {
+                                                const pendingIds = filteredOrders.filter(o => o.status === 'pending').map(o => o.id);
+                                                setSelectedIds(selectedIds.size === pendingIds.length ? new Set() : new Set(pendingIds));
+                                            }} className="w-4 h-4 rounded" />
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Commande</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {filteredOrders.map(order => (
+                                        <tr key={order.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedOrder(order)}>
+                                            <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+                                                {order.status === 'pending' && <input type="checkbox" checked={selectedIds.has(order.id)} onChange={() => toggleSelection(order.id)} className="w-4 h-4 rounded" />}
+                                            </td>
+                                            <td className="px-4 py-4 font-medium text-blue-600">{order.order_number}</td>
+                                            <td className="px-4 py-4"><SourceBadge source={order.source} /></td>
+                                            <td className="px-4 py-4">
+                                                <p className="font-medium">{order.customer_name}</p>
+                                                <p className="text-sm text-gray-500">{order.customer_email}</p>
+                                            </td>
+                                            <td className="px-4 py-4 font-medium">{order.total.toFixed(2)} €</td>
+                                            <td className="px-4 py-4"><StatusBadge status={order.status} /></td>
+                                            <td className="px-4 py-4 text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString('fr-FR')}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {filteredOrders.length === 0 && (
+                                <div className="text-center py-12">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">📋</div>
+                                    <p className="text-gray-500">Aucune commande</p>
+                                </div>
+                            )}
+                        </div>
+                    </main>
+
+                    {/* Modals */}
+                    <Modal isOpen={!!selectedOrder} onClose={() => setSelectedOrder(null)} title="Détails" size="lg">
+                        {selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onShip={handleShipOrder} />}
+                    </Modal>
+                    <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title="Importer">
+                        <ImportModal onClose={() => setShowImportModal(false)} onImport={handleImport} />
+                    </Modal>
+                    <Modal isOpen={showBulkShipModal} onClose={() => setShowBulkShipModal(false)} title="Expédition groupée">
+                        <BulkShipModal orders={selectedOrders} onClose={() => setShowBulkShipModal(false)} onShip={handleBulkShip} />
+                    </Modal>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<OrdersApp />);
+    </script>
+</body>
+</html>

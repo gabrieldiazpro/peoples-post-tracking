@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routz - Gestion des Retours</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slideIn { animation: slideIn 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        const { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } = Recharts;
+
+        // Mock data
+        const mockReturns = [
+            { id: 'RMA-2024-001', orderNumber: 'ORD-78542', customer: 'Marie Dupont', email: 'marie.d@email.com', items: [{ name: 'T-shirt Blanc XL', sku: 'TSH-WHT-XL', quantity: 1, reason: 'Taille trop grande' }], status: 'pending_approval', amount: 29.90, requestedAt: '2024-01-15T10:30:00Z', carrier: null },
+            { id: 'RMA-2024-002', orderNumber: 'ORD-78490', customer: 'Jean Martin', email: 'j.martin@email.com', items: [{ name: 'Jeans Slim Fit', sku: 'JNS-SLM-32', quantity: 1, reason: 'Article défectueux' }], status: 'approved', amount: 79.90, requestedAt: '2024-01-14T14:20:00Z', carrier: 'colissimo', trackingNumber: '6L123456789FR' },
+            { id: 'RMA-2024-003', orderNumber: 'ORD-78321', customer: 'Sophie Bernard', email: 's.bernard@email.com', items: [{ name: 'Sneakers Running', sku: 'SNK-RUN-42', quantity: 1, reason: 'Ne correspond pas à la description' }], status: 'in_transit', amount: 119.90, requestedAt: '2024-01-12T09:15:00Z', carrier: 'chronopost', trackingNumber: 'XY987654321' },
+            { id: 'RMA-2024-004', orderNumber: 'ORD-78156', customer: 'Pierre Leroy', email: 'p.leroy@email.com', items: [{ name: 'Veste Cuir', sku: 'VES-CUR-L', quantity: 1, reason: 'Changement d\'avis' }], status: 'received', amount: 199.90, requestedAt: '2024-01-10T16:45:00Z', carrier: 'colissimo', trackingNumber: '6L987654321FR' },
+            { id: 'RMA-2024-005', orderNumber: 'ORD-77998', customer: 'Claire Moreau', email: 'c.moreau@email.com', items: [{ name: 'Robe d\'été', sku: 'ROB-ETE-M', quantity: 1, reason: 'Taille trop petite' }], status: 'inspecting', amount: 59.90, requestedAt: '2024-01-08T11:30:00Z', carrier: 'mondial_relay', trackingNumber: 'MR123456789' },
+            { id: 'RMA-2024-006', orderNumber: 'ORD-77845', customer: 'Lucas Petit', email: 'l.petit@email.com', items: [{ name: 'Pull en Laine', sku: 'PUL-LAN-M', quantity: 1, reason: 'Article défectueux' }], status: 'refunded', amount: 89.90, requestedAt: '2024-01-05T08:20:00Z', refundedAt: '2024-01-12T14:00:00Z', refundMethod: 'original_payment' },
+            { id: 'RMA-2024-007', orderNumber: 'ORD-77701', customer: 'Emma Roux', email: 'e.roux@email.com', items: [{ name: 'Sac à Main', sku: 'SAC-MAI-NO', quantity: 1, reason: 'Endommagé pendant le transport' }], status: 'refunded', amount: 149.90, requestedAt: '2024-01-03T13:10:00Z', refundedAt: '2024-01-10T10:30:00Z', refundMethod: 'store_credit' },
+        ];
+
+        const reasonStats = [
+            { name: 'Taille incorrecte', count: 45, percentage: 35 },
+            { name: 'Article défectueux', count: 32, percentage: 25 },
+            { name: 'Changement d\'avis', count: 26, percentage: 20 },
+            { name: 'Non conforme', count: 15, percentage: 12 },
+            { name: 'Endommagé transport', count: 10, percentage: 8 }
+        ];
+
+        const statusConfig = {
+            pending_approval: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800', icon: '⏳', step: 1 },
+            approved: { label: 'Approuvé', color: 'bg-blue-100 text-blue-800', icon: '✓', step: 2 },
+            label_created: { label: 'Étiquette créée', color: 'bg-indigo-100 text-indigo-800', icon: '🏷️', step: 2 },
+            in_transit: { label: 'En transit', color: 'bg-purple-100 text-purple-800', icon: '🚚', step: 3 },
+            received: { label: 'Reçu', color: 'bg-cyan-100 text-cyan-800', icon: '📦', step: 4 },
+            inspecting: { label: 'Inspection', color: 'bg-orange-100 text-orange-800', icon: '🔍', step: 5 },
+            processed: { label: 'Traité', color: 'bg-teal-100 text-teal-800', icon: '✅', step: 6 },
+            refunded: { label: 'Remboursé', color: 'bg-green-100 text-green-800', icon: '💰', step: 7 },
+            rejected: { label: 'Rejeté', color: 'bg-red-100 text-red-800', icon: '❌', step: -1 }
+        };
+
+        const COLORS = ['#00FF88', '#00D4AA', '#0EA5E9', '#8B5CF6', '#F97316'];
+
+        const ReturnsPage = () => {
+            const [returns, setReturns] = useState(mockReturns);
+            const [filter, setFilter] = useState('all');
+            const [search, setSearch] = useState('');
+            const [selectedReturn, setSelectedReturn] = useState(null);
+            const [showModal, setShowModal] = useState(false);
+
+            const stats = useMemo(() => ({
+                total: returns.length,
+                pending: returns.filter(r => r.status === 'pending_approval').length,
+                inProgress: returns.filter(r => ['approved', 'in_transit', 'received', 'inspecting'].includes(r.status)).length,
+                refunded: returns.filter(r => r.status === 'refunded').length,
+                totalAmount: returns.filter(r => r.status === 'refunded').reduce((s, r) => s + r.amount, 0)
+            }), [returns]);
+
+            const filteredReturns = useMemo(() => {
+                return returns.filter(r => {
+                    const matchesFilter = filter === 'all' || r.status === filter;
+                    const matchesSearch = search === '' || 
+                        r.id.toLowerCase().includes(search.toLowerCase()) ||
+                        r.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
+                        r.customer.toLowerCase().includes(search.toLowerCase());
+                    return matchesFilter && matchesSearch;
+                });
+            }, [returns, filter, search]);
+
+            const handleApprove = (rmaId) => {
+                setReturns(prev => prev.map(r => 
+                    r.id === rmaId ? { ...r, status: 'approved', carrier: 'colissimo', trackingNumber: `6L${Date.now()}FR` } : r
+                ));
+            };
+
+            const handleReject = (rmaId) => {
+                setReturns(prev => prev.map(r => 
+                    r.id === rmaId ? { ...r, status: 'rejected' } : r
+                ));
+            };
+
+            const WorkflowSteps = ({ currentStatus }) => {
+                const steps = [
+                    { key: 'pending_approval', label: 'Demande' },
+                    { key: 'approved', label: 'Approuvé' },
+                    { key: 'in_transit', label: 'En transit' },
+                    { key: 'received', label: 'Reçu' },
+                    { key: 'inspecting', label: 'Inspection' },
+                    { key: 'refunded', label: 'Remboursé' }
+                ];
+                
+                const currentStep = statusConfig[currentStatus]?.step || 0;
+
+                return (
+                    <div className="flex items-center justify-between mb-6">
+                        {steps.map((step, i) => {
+                            const stepNum = i + 1;
+                            const isActive = stepNum <= currentStep;
+                            const isCurrent = statusConfig[step.key]?.step === currentStep;
+                            
+                            return (
+                                <React.Fragment key={step.key}>
+                                    <div className="flex flex-col items-center">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                            isActive ? 'bg-[#00FF88] text-black' : 'bg-gray-200 text-gray-500'
+                                        } ${isCurrent ? 'ring-2 ring-[#00FF88] ring-offset-2' : ''}`}>
+                                            {isActive ? '✓' : stepNum}
+                                        </div>
+                                        <span className={`text-xs mt-1 ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>{step.label}</span>
+                                    </div>
+                                    {i < steps.length - 1 && (
+                                        <div className={`flex-1 h-0.5 mx-2 ${stepNum < currentStep ? 'bg-[#00FF88]' : 'bg-gray-200'}`} />
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+                        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#00FF88] to-[#00D4AA] rounded-xl flex items-center justify-center">
+                                    <span className="text-black font-bold">R</span>
+                                </div>
+                                <div>
+                                    <h1 className="font-semibold text-gray-900">Gestion des Retours</h1>
+                                    <p className="text-xs text-gray-500">RMA & Remboursements</p>
+                                </div>
+                            </div>
+                            <button className="px-4 py-2 bg-[#00FF88] text-black font-medium rounded-lg hover:bg-[#00D4AA]">
+                                + Nouveau retour
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="max-w-7xl mx-auto px-4 py-6">
+                        {/* Stats */}
+                        <div className="grid grid-cols-5 gap-4 mb-6">
+                            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                                <p className="text-sm text-gray-500">Total demandes</p>
+                                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                                <p className="text-sm text-gray-500">En attente</p>
+                                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                                <p className="text-sm text-gray-500">En cours</p>
+                                <p className="text-2xl font-bold text-blue-600">{stats.inProgress}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                                <p className="text-sm text-gray-500">Remboursés</p>
+                                <p className="text-2xl font-bold text-green-600">{stats.refunded}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                                <p className="text-sm text-gray-500">Montant remboursé</p>
+                                <p className="text-2xl font-bold text-gray-900">{stats.totalAmount.toFixed(2)}€</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-6 mb-6">
+                            {/* Raisons de retour */}
+                            <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                                <h3 className="font-semibold text-gray-900 mb-4">Raisons de retour</h3>
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <PieChart>
+                                        <Pie data={reasonStats} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percentage }) => `${percentage}%`}>
+                                            {reasonStats.map((entry, index) => (
+                                                <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <div className="mt-4 space-y-2">
+                                    {reasonStats.slice(0, 3).map((reason, i) => (
+                                        <div key={i} className="flex items-center justify-between text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }} />
+                                                <span className="text-gray-600">{reason.name}</span>
+                                            </div>
+                                            <span className="font-medium">{reason.count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Taux de retour */}
+                            <div className="bg-white rounded-2xl p-6 border border-gray-100 col-span-2">
+                                <h3 className="font-semibold text-gray-900 mb-4">Évolution des retours (30j)</h3>
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <BarChart data={[
+                                        { day: 'Lun', returns: 12, refunds: 8 },
+                                        { day: 'Mar', returns: 15, refunds: 10 },
+                                        { day: 'Mer', returns: 8, refunds: 6 },
+                                        { day: 'Jeu', returns: 18, refunds: 12 },
+                                        { day: 'Ven', returns: 22, refunds: 15 },
+                                        { day: 'Sam', returns: 10, refunds: 7 },
+                                        { day: 'Dim', returns: 5, refunds: 3 }
+                                    ]}>
+                                        <XAxis dataKey="day" axisLine={false} tickLine={false} />
+                                        <YAxis axisLine={false} tickLine={false} />
+                                        <Tooltip />
+                                        <Bar dataKey="returns" fill="#00FF88" radius={[4, 4, 0, 0]} name="Demandes" />
+                                        <Bar dataKey="refunds" fill="#00D4AA" radius={[4, 4, 0, 0]} name="Remboursés" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="relative flex-1 max-w-md">
+                                <input type="text" placeholder="Rechercher par RMA, commande, client..."
+                                    value={search} onChange={e => setSearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00FF88] focus:border-transparent" />
+                                <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
+                            </div>
+                            <div className="flex gap-2">
+                                {[
+                                    { key: 'all', label: 'Tous' },
+                                    { key: 'pending_approval', label: '⏳ En attente' },
+                                    { key: 'in_transit', label: '🚚 En transit' },
+                                    { key: 'received', label: '📦 Reçus' },
+                                    { key: 'refunded', label: '💰 Remboursés' }
+                                ].map(f => (
+                                    <button key={f.key} onClick={() => setFilter(f.key)}
+                                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                                            filter === f.key ? 'bg-[#00FF88] text-black' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                                        }`}>
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Returns List */}
+                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                            <table className="w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">RMA</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Articles</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Raison</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredReturns.map(ret => (
+                                        <tr key={ret.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => { setSelectedReturn(ret); setShowModal(true); }}>
+                                            <td className="px-4 py-4">
+                                                <p className="font-medium text-gray-900">{ret.id}</p>
+                                                <p className="text-xs text-gray-500">{ret.orderNumber}</p>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <p className="text-sm text-gray-900">{ret.customer}</p>
+                                                <p className="text-xs text-gray-500">{ret.email}</p>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <p className="text-sm text-gray-900">{ret.items[0].name}</p>
+                                                <p className="text-xs text-gray-500">{ret.items[0].sku}</p>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className="text-sm text-gray-600">{ret.items[0].reason}</span>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className="font-medium text-gray-900">{ret.amount.toFixed(2)}€</span>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[ret.status].color}`}>
+                                                    {statusConfig[ret.status].icon} {statusConfig[ret.status].label}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+                                                {ret.status === 'pending_approval' && (
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => handleApprove(ret.id)} className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-medium hover:bg-green-200">
+                                                            ✓ Approuver
+                                                        </button>
+                                                        <button onClick={() => handleReject(ret.id)} className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium hover:bg-red-200">
+                                                            ✗ Rejeter
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {ret.status === 'approved' && ret.trackingNumber && (
+                                                    <span className="text-xs text-blue-600">📦 {ret.trackingNumber}</span>
+                                                )}
+                                                {ret.status === 'refunded' && (
+                                                    <span className="text-xs text-green-600">✓ Remboursé</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Modal détail */}
+                    {showModal && selectedReturn && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
+                            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-slideIn" onClick={e => e.stopPropagation()}>
+                                <div className="p-6 border-b border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-gray-900">{selectedReturn.id}</h2>
+                                            <p className="text-sm text-gray-500">Commande {selectedReturn.orderNumber}</p>
+                                        </div>
+                                        <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+                                    </div>
+                                </div>
+                                <div className="p-6">
+                                    <WorkflowSteps currentStatus={selectedReturn.status} />
+                                    
+                                    <div className="grid grid-cols-2 gap-6 mb-6">
+                                        <div>
+                                            <h4 className="font-medium text-gray-900 mb-2">Client</h4>
+                                            <p className="text-sm text-gray-600">{selectedReturn.customer}</p>
+                                            <p className="text-sm text-gray-500">{selectedReturn.email}</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium text-gray-900 mb-2">Demandé le</h4>
+                                            <p className="text-sm text-gray-600">{new Date(selectedReturn.requestedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <h4 className="font-medium text-gray-900 mb-3">Articles à retourner</h4>
+                                        {selectedReturn.items.map((item, i) => (
+                                            <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
+                                                <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">📦</div>
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-gray-900">{item.name}</p>
+                                                    <p className="text-sm text-gray-500">SKU: {item.sku} • Qté: {item.quantity}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-medium text-gray-900">{selectedReturn.amount.toFixed(2)}€</p>
+                                                    <p className="text-xs text-orange-600">{item.reason}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {selectedReturn.trackingNumber && (
+                                        <div className="mb-6 p-4 bg-blue-50 rounded-xl">
+                                            <h4 className="font-medium text-blue-900 mb-2">📦 Suivi du retour</h4>
+                                            <p className="text-sm text-blue-700">Transporteur: {selectedReturn.carrier}</p>
+                                            <p className="text-sm text-blue-700">N° de suivi: {selectedReturn.trackingNumber}</p>
+                                        </div>
+                                    )}
+
+                                    {selectedReturn.status === 'pending_approval' && (
+                                        <div className="flex gap-3">
+                                            <button onClick={() => { handleApprove(selectedReturn.id); setShowModal(false); }}
+                                                className="flex-1 py-3 bg-[#00FF88] text-black font-semibold rounded-xl hover:bg-[#00D4AA]">
+                                                ✓ Approuver le retour
+                                            </button>
+                                            <button onClick={() => { handleReject(selectedReturn.id); setShowModal(false); }}
+                                                className="px-6 py-3 bg-red-100 text-red-700 font-semibold rounded-xl hover:bg-red-200">
+                                                ✗ Rejeter
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<ReturnsPage />);
+    </script>
+</body>
+</html>
