@@ -45,3 +45,4 @@ services:
     name: routz-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # Allow all IPs (required for free tier)
