@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi de votre commande - Routz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .timeline-dot { transition: all 0.3s; }
+        .timeline-dot.active { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+        }
+        .step-connector { transition: background-color 0.5s; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    
+    <!-- Header avec branding personnalisable -->
+    <header id="brandedHeader" class="bg-white shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img id="brandLogo" src="https://via.placeholder.com/120x40?text=VOTRE+LOGO" alt="Logo" class="h-10">
+            </div>
+            <a href="#" id="storeLink" class="text-blue-600 hover:text-blue-700 font-medium text-sm">
+                Retour à la boutique →
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Search Box -->
+        <div id="searchSection" class="bg-white rounded-2xl shadow-xl p-8 mb-8">
+            <div class="text-center mb-6">
+                <i data-lucide="package-search" class="w-16 h-16 mx-auto text-blue-600 mb-4"></i>
+                <h1 class="text-2xl font-bold text-gray-900">Suivez votre colis</h1>
+                <p class="text-gray-600 mt-2">Entrez votre numéro de suivi ou de commande</p>
+            </div>
+
+            <div class="max-w-md mx-auto">
+                <div class="flex gap-2">
+                    <input type="text" id="trackingInput" 
+                           class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-0 text-lg"
+                           placeholder="Ex: 6A12345678901">
+                    <button onclick="trackPackage()" 
+                            class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition flex items-center gap-2">
+                        <i data-lucide="search" class="w-5 h-5"></i>
+                        Suivre
+                    </button>
+                </div>
+                <p class="text-sm text-gray-500 mt-3 text-center">
+                    Le numéro de suivi se trouve dans votre email de confirmation d'expédition
+                </p>
+            </div>
+        </div>
+
+        <!-- Tracking Results -->
+        <div id="trackingResults" class="hidden">
+            <!-- Status Card -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
+                <!-- Status Banner -->
+                <div id="statusBanner" class="bg-blue-600 text-white px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                                <i data-lucide="truck" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p id="statusLabel" class="text-xl font-bold">En cours de livraison</p>
+                                <p id="statusSubtext" class="text-blue-100">Votre colis arrive bientôt !</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-blue-100">Livraison estimée</p>
+                            <p id="estimatedDate" class="text-lg font-bold">Aujourd'hui</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tracking Info -->
+                <div class="p-6">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div>
+                            <p class="text-sm text-gray-500">N° de suivi</p>
+                            <p id="trackingNumber" class="font-mono font-semibold text-gray-900">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Transporteur</p>
+                            <p id="carrierName" class="font-semibold text-gray-900">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Expédié le</p>
+                            <p id="shippedDate" class="font-semibold text-gray-900">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Poids</p>
+                            <p id="packageWeight" class="font-semibold text-gray-900">-</p>
+                        </div>
+                    </div>
+
+                    <!-- Progress Timeline -->
+                    <div class="relative">
+                        <div class="flex justify-between mb-2">
+                            <div class="text-center flex-1">
+                                <div id="step1" class="timeline-dot w-10 h-10 mx-auto rounded-full bg-green-500 text-white flex items-center justify-center mb-2">
+                                    <i data-lucide="check" class="w-5 h-5"></i>
+                                </div>
+                                <p class="text-sm font-medium text-gray-900">Expédié</p>
+                            </div>
+                            <div class="text-center flex-1">
+                                <div id="step2" class="timeline-dot w-10 h-10 mx-auto rounded-full bg-green-500 text-white flex items-center justify-center mb-2">
+                                    <i data-lucide="check" class="w-5 h-5"></i>
+                                </div>
+                                <p class="text-sm font-medium text-gray-900">En transit</p>
+                            </div>
+                            <div class="text-center flex-1">
+                                <div id="step3" class="timeline-dot w-10 h-10 mx-auto rounded-full bg-blue-500 text-white flex items-center justify-center mb-2 active">
+                                    <i data-lucide="truck" class="w-5 h-5"></i>
+                                </div>
+                                <p class="text-sm font-medium text-gray-900">En livraison</p>
+                            </div>
+                            <div class="text-center flex-1">
+                                <div id="step4" class="timeline-dot w-10 h-10 mx-auto rounded-full bg-gray-200 text-gray-400 flex items-center justify-center mb-2">
+                                    <i data-lucide="home" class="w-5 h-5"></i>
+                                </div>
+                                <p class="text-sm font-medium text-gray-500">Livré</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div class="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 -z-10" style="margin: 0 5%;">
+                            <div id="progressBar" class="h-full bg-green-500 transition-all duration-500" style="width: 66%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delivery Address -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <i data-lucide="map-pin" class="w-5 h-5 text-gray-400"></i>
+                        Adresse de livraison
+                    </h3>
+                    <div id="deliveryAddress" class="text-gray-600">
+                        <p class="font-medium text-gray-900">Jean Dupont</p>
+                        <p>123 Rue de Paris</p>
+                        <p>75001 Paris, France</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <i data-lucide="bell" class="w-5 h-5 text-gray-400"></i>
+                        Notifications
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-3">Recevez les mises à jour par SMS</p>
+                    <div class="flex gap-2">
+                        <input type="tel" placeholder="+33 6 XX XX XX XX" 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                            M'alerter
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events History -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="clock" class="w-5 h-5 text-gray-400"></i>
+                    Historique détaillé
+                </h3>
+                
+                <div id="eventsTimeline" class="space-y-4">
+                    <!-- Events loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="mt-6 flex flex-wrap gap-4 justify-center">
+                <button onclick="shareTracking()" class="px-6 py-3 bg-white text-gray-700 font-medium rounded-xl shadow hover:shadow-md transition flex items-center gap-2">
+                    <i data-lucide="share-2" class="w-5 h-5"></i>
+                    Partager
+                </button>
+                <button onclick="downloadProof()" class="px-6 py-3 bg-white text-gray-700 font-medium rounded-xl shadow hover:shadow-md transition flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                    Preuve de livraison
+                </button>
+                <a href="returns.html" class="px-6 py-3 bg-white text-gray-700 font-medium rounded-xl shadow hover:shadow-md transition flex items-center gap-2">
+                    <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                    Faire un retour
+                </a>
+            </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="mt-8 text-center">
+            <p class="text-gray-600 mb-2">Besoin d'aide ?</p>
+            <a href="#" class="text-blue-600 hover:text-blue-700 font-medium">Contacter le support →</a>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 py-6 border-t bg-white/50">
+        <div class="max-w-4xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p class="text-sm text-gray-500">
+                Suivi propulsé par <a href="https://routz.io" class="text-blue-600 font-medium">Routz</a>
+            </p>
+            <div class="flex gap-6 text-sm text-gray-500">
+                <a href="#" class="hover:text-gray-700">Confidentialité</a>
+                <a href="#" class="hover:text-gray-700">Conditions</a>
+                <a href="#" class="hover:text-gray-700">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Simulated tracking data
+        const mockTrackingData = {
+            trackingNumber: '6A12345678901',
+            carrier: 'Colissimo',
+            carrierLogo: 'https://logo.clearbit.com/colissimo.fr',
+            status: 'out_for_delivery',
+            statusLabel: 'En cours de livraison',
+            statusSubtext: 'Votre colis sera livré aujourd\'hui',
+            estimatedDelivery: 'Aujourd\'hui avant 18h',
+            shippedDate: '25 Nov 2024',
+            weight: '1.2 kg',
+            progress: 75,
+            recipient: {
+                name: 'Jean Dupont',
+                address: '123 Rue de Paris',
+                city: '75001 Paris, France'
+            },
+            events: [
+                { date: '28 Nov 2024', time: '08:32', status: 'out_for_delivery', description: 'Colis en cours de livraison', location: 'Paris (75)' },
+                { date: '28 Nov 2024', time: '06:15', status: 'arrived', description: 'Arrivé au centre de distribution', location: 'Paris Nord' },
+                { date: '27 Nov 2024', time: '22:40', status: 'in_transit', description: 'En transit', location: 'Hub Lyon-Satolas' },
+                { date: '27 Nov 2024', time: '14:20', status: 'in_transit', description: 'Départ du hub', location: 'Marseille' },
+                { date: '26 Nov 2024', time: '16:45', status: 'picked_up', description: 'Colis pris en charge', location: 'Marseille (13)' },
+                { date: '25 Nov 2024', time: '11:30', status: 'label_created', description: 'Étiquette créée', location: '' }
+            ]
+        };
+
+        function trackPackage() {
+            const input = document.getElementById('trackingInput').value.trim();
+            if (!input) {
+                alert('Veuillez entrer un numéro de suivi');
+                return;
+            }
+
+            // Simulate API call
+            displayTrackingResults(mockTrackingData);
+        }
+
+        function displayTrackingResults(data) {
+            document.getElementById('searchSection').classList.add('hidden');
+            document.getElementById('trackingResults').classList.remove('hidden');
+
+            // Update info
+            document.getElementById('trackingNumber').textContent = data.trackingNumber;
+            document.getElementById('carrierName').textContent = data.carrier;
+            document.getElementById('shippedDate').textContent = data.shippedDate;
+            document.getElementById('packageWeight').textContent = data.weight;
+            document.getElementById('statusLabel').textContent = data.statusLabel;
+            document.getElementById('statusSubtext').textContent = data.statusSubtext;
+            document.getElementById('estimatedDate').textContent = data.estimatedDelivery;
+
+            // Update progress
+            document.getElementById('progressBar').style.width = data.progress + '%';
+
+            // Update address
+            const addr = data.recipient;
+            document.getElementById('deliveryAddress').innerHTML = `
+                <p class="font-medium text-gray-900">${addr.name}</p>
+                <p>${addr.address}</p>
+                <p>${addr.city}</p>
+            `;
+
+            // Render events
+            const eventsHtml = data.events.map((event, index) => `
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-center">
+                        <div class="w-3 h-3 rounded-full ${index === 0 ? 'bg-blue-500' : 'bg-gray-300'}"></div>
+                        ${index < data.events.length - 1 ? '<div class="w-0.5 h-full bg-gray-200 mt-1"></div>' : ''}
+                    </div>
+                    <div class="flex-1 pb-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-medium text-gray-900">${event.description}</p>
+                                <p class="text-sm text-gray-500">${event.location}</p>
+                            </div>
+                            <div class="text-right text-sm text-gray-500">
+                                <p>${event.date}</p>
+                                <p>${event.time}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('eventsTimeline').innerHTML = eventsHtml;
+            
+            lucide.createIcons();
+        }
+
+        function shareTracking() {
+            const url = window.location.href;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Suivi de colis',
+                    text: 'Suivez mon colis en temps réel',
+                    url: url
+                });
+            } else {
+                navigator.clipboard.writeText(url);
+                alert('Lien copié !');
+            }
+        }
+
+        function downloadProof() {
+            alert('Téléchargement de la preuve de livraison...');
+        }
+
+        // Check URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const trackingParam = urlParams.get('t') || urlParams.get('tracking');
+        if (trackingParam) {
+            document.getElementById('trackingInput').value = trackingParam;
+            trackPackage();
+        }
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>

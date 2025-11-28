@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intégrations - Routz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .integration-card { transition: all 0.2s; }
+        .integration-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px -8px rgba(0,0,0,0.15); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-full w-64 bg-slate-900 text-white p-6 hidden lg:block">
+        <div class="flex items-center gap-3 mb-8">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                <i data-lucide="truck" class="w-6 h-6"></i>
+            </div>
+            <span class="text-xl font-bold">Routz</span>
+        </div>
+
+        <nav class="space-y-1">
+            <a href="index.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                Dashboard
+            </a>
+            <a href="orders.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                Commandes
+            </a>
+            <a href="shipments.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="package" class="w-5 h-5"></i>
+                Expéditions
+            </a>
+            <a href="returns.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                Retours
+            </a>
+            <a href="integrations.html" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600 text-white">
+                <i data-lucide="plug" class="w-5 h-5"></i>
+                Intégrations
+            </a>
+            <a href="settings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                Paramètres
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="lg:ml-64 p-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Intégrations</h1>
+                    <p class="text-gray-600 mt-1">Connectez vos boutiques, transporteurs et outils</p>
+                </div>
+            </div>
+
+            <!-- Connected Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-gray-900">8</p>
+                            <p class="text-sm text-gray-500">Actives</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="shopping-bag" class="w-5 h-5 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-gray-900">3</p>
+                            <p class="text-sm text-gray-500">Boutiques</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="truck" class="w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-gray-900">5</p>
+                            <p class="text-sm text-gray-500">Transporteurs</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="zap" class="w-5 h-5 text-amber-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-gray-900">15k</p>
+                            <p class="text-sm text-gray-500">Syncs/jour</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- E-commerce Platforms -->
+            <section class="mb-10">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="shopping-bag" class="w-5 h-5 text-gray-400"></i>
+                    Plateformes E-commerce
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Shopify -->
+                    <div class="integration-card bg-white rounded-xl p-6 shadow-sm border-2 border-green-500">
+                        <div class="flex items-start justify-between mb-4">
+                            <img src="https://logo.clearbit.com/shopify.com" alt="Shopify" class="w-12 h-12 rounded-lg">
+                            <span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Connecté</span>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-1">Shopify</h3>
+                        <p class="text-sm text-gray-500 mb-4">ma-boutique.myshopify.com</p>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">1,234 commandes sync</span>
+                            <button class="text-blue-600 font-medium hover:text-blue-700">Gérer</button>
+                        </div>
+                    </div>
+
+                    <!-- WooCommerce -->
+                    <div class="integration-card bg-white rounded-xl p-6 shadow-sm border-2 border-green-500">
+                        <div class="flex items-start justify-between mb-4">
+                            <img src="https://logo.clearbit.com/woocommerce.com" alt="WooCommerce" class="w-12 h-12 rounded-lg">
+                            <span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Connecté</span>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-1">WooCommerce</h3>
+                        <p class="text-sm text-gray-500 mb-4">monsite.fr</p>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">856 commandes sync</span>
+                            <button class="text-blue-600 font-medium hover:text-blue-700">Gérer</button>
+                        </div>
+                    </div>
+
+                    <!-- PrestaShop -->
+                    <div class="integration-card bg-white rounded-xl p-6 shadow-sm border-2 border-green-500">
+                        <div class="flex items-start justify-between mb-4">
+                            <img src="https://logo.clearbit.com/prestashop.com" alt="PrestaShop" class="w-12 h-12 rounded-lg">
+                            <span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Connecté</span>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-1">PrestaShop</h3>
+                        <p class="text-sm text-gray-500 mb-4">boutique.exemple.com</p>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">2,341 commandes sync</span>
+                            <button class="text-blue-600 font-medium hover:text-blue-700">Gérer</button>
+                        </div>
+                    </div>
+
+                    <!-- Magento -->
+                    <div class="integration-card bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-start justify-between mb-4">
+                            <img src="https://logo.clearbit.com/magento.com" alt="Magento" class="w-12 h-12 rounded-lg">
+                            <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">Disponible</span>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-1">Magento 2</h3>
+                        <p class="text-sm text-gray-500 mb-4">Adobe Commerce</p>
+                        <button class="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+
+                    <!-- Shopware -->
+                    <div class="integration-card bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-start justify-between mb-4">
+                            <img src="https://logo.clearbit.com/shopware.com" alt="Shopware" class="w-12 h-12 rounded-lg">
+                            <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">Disponible</span>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-1">Shopware 6</h3>
+                        <p class="text-sm text-gray-500 mb-4">E-commerce allemand</p>
+                        <button class="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+
+                    <!-- Custom API -->
+                    <div class="integration-card bg-white rounded-xl p-6 shadow-sm border border-gray-200 border-dashed">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="code" class="w-6 h-6 text-gray-400"></i>
+                            </div>
+                            <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">API</span>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-1">API Personnalisée</h3>
+                        <p class="text-sm text-gray-500 mb-4">Intégrez votre propre système</p>
+                        <button class="w-full py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50">
+                            Voir la documentation
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Carriers -->
+            <section class="mb-10">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="truck" class="w-5 h-5 text-gray-400"></i>
+                    Transporteurs
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Colissimo -->
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border-2 border-green-500">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/colissimo.fr" alt="Colissimo" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Colissimo</h3>
+                                <p class="text-xs text-green-600">Actif</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <p>Contrat: 123456</p>
+                            <p>12,450 envois ce mois</p>
+                        </div>
+                    </div>
+
+                    <!-- Chronopost -->
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border-2 border-green-500">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/chronopost.fr" alt="Chronopost" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Chronopost</h3>
+                                <p class="text-xs text-green-600">Actif</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <p>Contrat: 789012</p>
+                            <p>3,200 envois ce mois</p>
+                        </div>
+                    </div>
+
+                    <!-- Mondial Relay -->
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border-2 border-green-500">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/mondialrelay.fr" alt="Mondial Relay" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Mondial Relay</h3>
+                                <p class="text-xs text-green-600">Actif</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <p>Enseigne: ROUTZ</p>
+                            <p>8,900 envois ce mois</p>
+                        </div>
+                    </div>
+
+                    <!-- DPD -->
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border-2 border-green-500">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/dpd.fr" alt="DPD" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">DPD</h3>
+                                <p class="text-xs text-green-600">Actif</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <p>Client: DPD-FR-001</p>
+                            <p>4,100 envois ce mois</p>
+                        </div>
+                    </div>
+
+                    <!-- GLS -->
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border-2 border-green-500">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/gls-group.eu" alt="GLS" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">GLS</h3>
+                                <p class="text-xs text-green-600">Actif</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <p>Contact ID: GLS123</p>
+                            <p>2,800 envois ce mois</p>
+                        </div>
+                    </div>
+
+                    <!-- UPS -->
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/ups.com" alt="UPS" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">UPS</h3>
+                                <p class="text-xs text-gray-500">Non configuré</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm text-blue-600 font-medium hover:bg-blue-50 rounded">
+                            Configurer
+                        </button>
+                    </div>
+
+                    <!-- FedEx -->
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/fedex.com" alt="FedEx" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">FedEx</h3>
+                                <p class="text-xs text-gray-500">Non configuré</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm text-blue-600 font-medium hover:bg-blue-50 rounded">
+                            Configurer
+                        </button>
+                    </div>
+
+                    <!-- DHL -->
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/dhl.com" alt="DHL" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">DHL Express</h3>
+                                <p class="text-xs text-gray-500">Non configuré</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm text-blue-600 font-medium hover:bg-blue-50 rounded">
+                            Configurer
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Marketplaces -->
+            <section class="mb-10">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="store" class="w-5 h-5 text-gray-400"></i>
+                    Marketplaces
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/amazon.fr" alt="Amazon" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Amazon</h3>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/cdiscount.com" alt="Cdiscount" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Cdiscount</h3>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/fnac.com" alt="Fnac" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Fnac</h3>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/rakuten.fr" alt="Rakuten" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Rakuten</h3>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tools & Automations -->
+            <section>
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="zap" class="w-5 h-5 text-gray-400"></i>
+                    Outils & Automatisations
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/zapier.com" alt="Zapier" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Zapier</h3>
+                                <p class="text-xs text-gray-500">Automatisations</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/slack.com" alt="Slack" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Slack</h3>
+                                <p class="text-xs text-gray-500">Notifications</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/google.com" alt="Google Sheets" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Google Sheets</h3>
+                                <p class="text-xs text-gray-500">Export données</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+
+                    <div class="integration-card bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="https://logo.clearbit.com/notion.so" alt="Notion" class="w-10 h-10 rounded-lg">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Notion</h3>
+                                <p class="text-xs text-gray-500">Documentation</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-1.5 text-sm bg-blue-600 text-white font-medium rounded hover:bg-blue-700">
+                            Connecter
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

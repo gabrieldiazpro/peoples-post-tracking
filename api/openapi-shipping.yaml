@@ -1,0 +1,1349 @@
+openapi: 3.1.0
+info:
+  title: Routz Shipping API
+  description: |
+    # Introduction
+    
+    L'API Routz permet d'intégrer facilement les fonctionnalités d'expédition multi-transporteurs 
+    dans votre application e-commerce. Cette documentation couvre tous les endpoints disponibles.
+    
+    ## Fonctionnalités principales
+    
+    - **Multi-transporteurs**: Colissimo, Chronopost, Mondial Relay, DPD, GLS, UPS, FedEx, DHL
+    - **Points relais**: Recherche et sélection de points de retrait
+    - **Tracking**: Suivi en temps réel des expéditions
+    - **Retours**: Portail self-service pour les retours clients
+    - **Tarifs**: Calcul dynamique des frais de port
+    
+    ## Authentification
+    
+    Toutes les requêtes doivent inclure un header `Authorization` avec votre clé API:
+    
+    ```
+    Authorization: Bearer YOUR_API_KEY
+    X-Org-Id: YOUR_ORGANIZATION_ID
+    ```
+    
+    ## Rate Limiting
+    
+    - 1000 requêtes/minute pour les endpoints de lecture
+    - 100 requêtes/minute pour les endpoints d'écriture
+    
+    ## Environnements
+    
+    - Production: `https://api.routz.io/v1`
+    - Sandbox: `https://sandbox.api.routz.io/v1`
+    
+  version: 1.0.0
+  contact:
+    name: Routz Support
+    url: https://routz.io/support
+    email: api@routz.io
+  license:
+    name: Proprietary
+    url: https://routz.io/terms
+
+servers:
+  - url: https://api.routz.io/v1
+    description: Production
+  - url: https://sandbox.api.routz.io/v1
+    description: Sandbox
+
+tags:
+  - name: Orders
+    description: Gestion des commandes
+  - name: Shipments
+    description: Création et gestion des expéditions
+  - name: Tracking
+    description: Suivi des colis
+  - name: Service Points
+    description: Points relais et consignes
+  - name: Rates
+    description: Calcul des tarifs
+  - name: Returns
+    description: Gestion des retours
+  - name: Webhooks
+    description: Notifications en temps réel
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  # ==========================================
+  # ORDERS
+  # ==========================================
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Liste des commandes
+      description: Récupère la liste des commandes avec pagination et filtres
+      operationId: listOrders
+      parameters:
+        - name: status
+          in: query
+          description: Filtrer par statut
+          schema:
+            type: string
+            enum: [pending_fulfillment, picking, picked, shipped, delivered, cancelled]
+        - name: carrier
+          in: query
+          description: Filtrer par transporteur
+          schema:
+            type: string
+        - name: from
+          in: query
+          description: Date de début (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: Date de fin (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Liste des commandes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Orders
+      summary: Créer une commande
+      description: Importe une nouvelle commande depuis votre plateforme e-commerce
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderInput'
+            example:
+              external_id: "12345"
+              external_platform: "shopify"
+              order_number: "FR-2024-12345"
+              customer_email: "client@example.com"
+              customer_name: "Jean Dupont"
+              customer_phone: "+33612345678"
+              shipping_address:
+                name: "Jean Dupont"
+                address1: "123 Rue de Paris"
+                city: "Lyon"
+                postalCode: "69001"
+                country: "FR"
+                phone: "+33612345678"
+              items:
+                - sku: "PROD-001"
+                  name: "T-Shirt Bleu"
+                  quantity: 2
+                  price: 29.99
+                  weight: 0.3
+              total: 65.97
+              shipping_cost: 5.99
+              currency: "EUR"
+      responses:
+        '201':
+          description: Commande créée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /orders/{orderId}:
+    get:
+      tags:
+        - Orders
+      summary: Détails d'une commande
+      operationId: getOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Détails de la commande
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Orders
+      summary: Mettre à jour une commande
+      operationId: updateOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderUpdate'
+      responses:
+        '200':
+          description: Commande mise à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Order'
+
+  # ==========================================
+  # SHIPMENTS
+  # ==========================================
+  /shipments:
+    post:
+      tags:
+        - Shipments
+      summary: Créer une expédition
+      description: |
+        Crée une expédition et génère automatiquement l'étiquette.
+        
+        Le endpoint retourne l'URL de l'étiquette PDF prête à imprimer.
+      operationId: createShipment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShipmentInput'
+            example:
+              order_id: "ord_abc123"
+              carrier: "colissimo"
+              service: "home"
+              weight: 1.5
+              pickup_point_id: null
+              insurance_value: 100
+              options:
+                signature: true
+      responses:
+        '201':
+          description: Expédition créée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Shipment'
+              example:
+                success: true
+                data:
+                  id: "shp_xyz789"
+                  order_id: "ord_abc123"
+                  carrier: "colissimo"
+                  service: "home"
+                  tracking_number: "6A12345678901"
+                  label_url: "https://api.routz.io/labels/shp_xyz789.pdf"
+                  status: "label_created"
+                  created_at: "2024-01-15T10:30:00Z"
+
+  /shipments/{shipmentId}:
+    get:
+      tags:
+        - Shipments
+      summary: Détails d'une expédition
+      operationId: getShipment
+      parameters:
+        - name: shipmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Détails de l'expédition
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Shipment'
+
+  /shipments/{shipmentId}/label:
+    get:
+      tags:
+        - Shipments
+      summary: Télécharger l'étiquette
+      description: Retourne le PDF de l'étiquette d'expédition
+      operationId: getShipmentLabel
+      parameters:
+        - name: shipmentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [pdf, zpl, png]
+            default: pdf
+      responses:
+        '200':
+          description: Étiquette PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /shipments/{shipmentId}/cancel:
+    post:
+      tags:
+        - Shipments
+      summary: Annuler une expédition
+      operationId: cancelShipment
+      parameters:
+        - name: shipmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expédition annulée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  # ==========================================
+  # TRACKING
+  # ==========================================
+  /tracking/{trackingNumber}:
+    get:
+      tags:
+        - Tracking
+      summary: Suivi d'un colis
+      description: Récupère les informations de suivi en temps réel
+      operationId: getTracking
+      security: []  # Public endpoint
+      parameters:
+        - name: trackingNumber
+          in: path
+          required: true
+          description: Numéro de suivi du colis
+          schema:
+            type: string
+          example: "6A12345678901"
+      responses:
+        '200':
+          description: Informations de suivi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingInfo'
+              example:
+                tracking_number: "6A12345678901"
+                carrier: "colissimo"
+                carrier_name: "Colissimo"
+                status: "in_transit"
+                status_label: "En cours d'acheminement"
+                estimated_delivery: "2024-01-17"
+                events:
+                  - date: "2024-01-15T14:30:00Z"
+                    status: "picked_up"
+                    description: "Colis pris en charge"
+                    location: "Paris (75)"
+                  - date: "2024-01-15T18:00:00Z"
+                    status: "in_transit"
+                    description: "En cours d'acheminement"
+                    location: "Hub Lyon"
+        '404':
+          description: Colis non trouvé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Tracking number not found"
+
+  # ==========================================
+  # SERVICE POINTS
+  # ==========================================
+  /service-points/search:
+    post:
+      tags:
+        - Service Points
+      summary: Rechercher des points relais
+      description: |
+        Recherche les points relais à proximité d'une adresse.
+        
+        Supporte les transporteurs suivants:
+        - Mondial Relay
+        - Colissimo (Pickup)
+        - Chronopost Relais
+        - DPD Relais
+        - GLS Shop
+        - UPS Access Point
+        - InPost Locker
+      operationId: searchServicePoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - postalCode
+                - country
+              properties:
+                postalCode:
+                  type: string
+                  description: Code postal
+                  example: "75001"
+                city:
+                  type: string
+                  description: Ville (optionnel)
+                  example: "Paris"
+                country:
+                  type: string
+                  description: Code pays ISO 2
+                  example: "FR"
+                latitude:
+                  type: number
+                  format: float
+                  description: Latitude (optionnel, pour recherche par coordonnées)
+                longitude:
+                  type: number
+                  format: float
+                  description: Longitude
+                carriers:
+                  type: array
+                  items:
+                    type: string
+                  description: Transporteurs à inclure
+                  example: ["mondial_relay", "colissimo"]
+                maxResults:
+                  type: integer
+                  default: 20
+                  maximum: 50
+                maxDistance:
+                  type: integer
+                  default: 20
+                  description: Distance max en km
+      responses:
+        '200':
+          description: Liste des points relais
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                  points:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicePoint'
+
+  /service-points/{carrier}/{pointId}:
+    get:
+      tags:
+        - Service Points
+      summary: Détails d'un point relais
+      operationId: getServicePoint
+      parameters:
+        - name: carrier
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pointId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Détails du point relais
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServicePoint'
+
+  # ==========================================
+  # RATES (Dynamic Checkout)
+  # ==========================================
+  /checkout/shipping-options:
+    post:
+      tags:
+        - Rates
+      summary: Options de livraison pour checkout
+      description: |
+        Endpoint principal pour l'intégration checkout.
+        
+        Retourne toutes les options de livraison disponibles avec leurs tarifs,
+        groupées par type (express, standard, point relais).
+      operationId: getShippingOptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - country
+                - postalCode
+              properties:
+                country:
+                  type: string
+                  example: "FR"
+                postalCode:
+                  type: string
+                  example: "75001"
+                city:
+                  type: string
+                weight:
+                  type: number
+                  format: float
+                  description: Poids en kg
+                  example: 1.5
+                dimensions:
+                  type: object
+                  properties:
+                    length:
+                      type: number
+                    width:
+                      type: number
+                    height:
+                      type: number
+                cartValue:
+                  type: number
+                  format: float
+                  description: Valeur du panier (pour franco de port)
+                  example: 89.90
+                includePickupPoints:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Options de livraison
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingOptions'
+
+  /rates/compare:
+    post:
+      tags:
+        - Rates
+      summary: Comparer les tarifs transporteurs
+      description: Compare les tarifs de tous les transporteurs pour un envoi
+      operationId: compareRates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fromCountry
+                - toCountry
+                - toPostalCode
+                - weight
+              properties:
+                fromCountry:
+                  type: string
+                  example: "FR"
+                fromPostalCode:
+                  type: string
+                  example: "75001"
+                toCountry:
+                  type: string
+                  example: "FR"
+                toPostalCode:
+                  type: string
+                  example: "69001"
+                weight:
+                  type: number
+                  example: 2.5
+                dimensions:
+                  type: object
+                  properties:
+                    length:
+                      type: number
+                    width:
+                      type: number
+                    height:
+                      type: number
+      responses:
+        '200':
+          description: Comparaison des tarifs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateComparison'
+
+  # ==========================================
+  # RETURNS
+  # ==========================================
+  /returns:
+    post:
+      tags:
+        - Returns
+      summary: Créer une demande de retour
+      operationId: createReturn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnInput'
+      responses:
+        '201':
+          description: Demande de retour créée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Return'
+
+  /returns/{returnId}:
+    get:
+      tags:
+        - Returns
+      summary: Détails d'un retour
+      operationId: getReturn
+      parameters:
+        - name: returnId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Détails du retour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Return'
+
+  /returns/{returnId}/label:
+    get:
+      tags:
+        - Returns
+      summary: Étiquette de retour
+      operationId: getReturnLabel
+      parameters:
+        - name: returnId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Étiquette PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # ==========================================
+  # WEBHOOKS
+  # ==========================================
+  /webhooks:
+    get:
+      tags:
+        - Webhooks
+      summary: Liste des webhooks configurés
+      operationId: listWebhooks
+      responses:
+        '200':
+          description: Liste des webhooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+
+    post:
+      tags:
+        - Webhooks
+      summary: Créer un webhook
+      operationId: createWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+                - events
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL de callback
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - shipment.created
+                      - shipment.tracking_updated
+                      - shipment.delivered
+                      - shipment.exception
+                      - return.created
+                      - return.received
+                      - return.refunded
+                secret:
+                  type: string
+                  description: Secret pour signature HMAC (généré si non fourni)
+      responses:
+        '201':
+          description: Webhook créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Token API dans le header Authorization
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Clé API alternative
+
+  parameters:
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: ID de la commande
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        maximum: 100
+
+  responses:
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    message:
+                      type: string
+    Unauthorized:
+      description: Non authentifié
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Invalid or missing API key"
+    NotFound:
+      description: Ressource non trouvée
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Resource not found"
+
+  schemas:
+    # Order schemas
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "ord_abc123"
+        external_id:
+          type: string
+        external_platform:
+          type: string
+          enum: [shopify, woocommerce, prestashop, magento, custom]
+        order_number:
+          type: string
+        status:
+          type: string
+          enum: [pending_fulfillment, picking, picked, shipped, delivered, cancelled]
+        customer_email:
+          type: string
+        customer_name:
+          type: string
+        shipping_address:
+          $ref: '#/components/schemas/Address'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        total:
+          type: number
+        shipping_cost:
+          type: number
+        currency:
+          type: string
+        carrier:
+          type: string
+        tracking_number:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        shipped_at:
+          type: string
+          format: date-time
+
+    OrderInput:
+      type: object
+      required:
+        - external_id
+        - shipping_address
+        - items
+      properties:
+        external_id:
+          type: string
+        external_platform:
+          type: string
+        order_number:
+          type: string
+        customer_email:
+          type: string
+        customer_name:
+          type: string
+        customer_phone:
+          type: string
+        shipping_address:
+          $ref: '#/components/schemas/Address'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemInput'
+        total:
+          type: number
+        shipping_cost:
+          type: number
+        currency:
+          type: string
+          default: "EUR"
+        carrier:
+          type: string
+        pickup_point:
+          type: object
+          properties:
+            id:
+              type: string
+            carrier:
+              type: string
+
+    OrderUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+        carrier:
+          type: string
+        note:
+          type: string
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+        weight:
+          type: number
+
+    OrderItemInput:
+      type: object
+      required:
+        - name
+        - quantity
+      properties:
+        external_id:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+        weight:
+          type: number
+
+    Address:
+      type: object
+      properties:
+        name:
+          type: string
+        company:
+          type: string
+        address1:
+          type: string
+        address2:
+          type: string
+        city:
+          type: string
+        province:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+        phone:
+          type: string
+
+    # Shipment schemas
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: string
+        order_id:
+          type: string
+        carrier:
+          type: string
+        carrier_name:
+          type: string
+        service:
+          type: string
+        tracking_number:
+          type: string
+        label_url:
+          type: string
+          format: uri
+        status:
+          type: string
+          enum: [pending, label_created, picked_up, in_transit, out_for_delivery, delivered, exception, cancelled]
+        pickup_point:
+          $ref: '#/components/schemas/ServicePoint'
+        weight:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+
+    ShipmentInput:
+      type: object
+      required:
+        - order_id
+        - carrier
+      properties:
+        order_id:
+          type: string
+        carrier:
+          type: string
+          enum: [colissimo, chronopost, mondial_relay, dpd, gls, ups, fedex, dhl]
+        service:
+          type: string
+        weight:
+          type: number
+        pickup_point_id:
+          type: string
+        insurance_value:
+          type: number
+        options:
+          type: object
+          properties:
+            signature:
+              type: boolean
+            saturday_delivery:
+              type: boolean
+
+    # Tracking schemas
+    TrackingInfo:
+      type: object
+      properties:
+        tracking_number:
+          type: string
+        carrier:
+          type: string
+        carrier_name:
+          type: string
+        status:
+          type: string
+        status_label:
+          type: string
+        estimated_delivery:
+          type: string
+          format: date
+        delivered_at:
+          type: string
+          format: date-time
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date-time
+              status:
+                type: string
+              description:
+                type: string
+              location:
+                type: string
+
+    # Service Point schemas
+    ServicePoint:
+      type: object
+      properties:
+        id:
+          type: string
+        carrier:
+          type: string
+        carrier_name:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        postal_code:
+          type: string
+        country:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        distance:
+          type: number
+          description: Distance en km
+        type:
+          type: string
+          enum: [shop, locker, post_office]
+        opening_hours:
+          type: object
+          additionalProperties:
+            type: string
+        photo_url:
+          type: string
+
+    # Rate schemas
+    ShippingOptions:
+      type: object
+      properties:
+        success:
+          type: boolean
+        currency:
+          type: string
+        freeShippingThreshold:
+          type: number
+        freeShippingEligible:
+          type: boolean
+        options:
+          type: object
+          properties:
+            express:
+              type: object
+              properties:
+                title:
+                  type: string
+                options:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ShippingOption'
+            standard:
+              type: object
+              properties:
+                title:
+                  type: string
+                options:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ShippingOption'
+            pickup:
+              type: object
+              properties:
+                title:
+                  type: string
+                options:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ShippingOption'
+
+    ShippingOption:
+      type: object
+      properties:
+        serviceId:
+          type: string
+        serviceName:
+          type: string
+        carrier:
+          type: string
+        carrierName:
+          type: string
+        type:
+          type: string
+        price:
+          type: number
+        originalPrice:
+          type: number
+        freeShipping:
+          type: boolean
+        deliveryDays:
+          type: object
+          properties:
+            min:
+              type: integer
+            max:
+              type: integer
+            formatted:
+              type: string
+        requiresPickupPoint:
+          type: boolean
+
+    RateComparison:
+      type: object
+      properties:
+        zone:
+          type: string
+        weight:
+          type: number
+        chargeableWeight:
+          type: number
+        carriers:
+          type: array
+          items:
+            type: object
+            properties:
+              carrier:
+                type: string
+              carrierName:
+                type: string
+              services:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShippingOption'
+              cheapest:
+                $ref: '#/components/schemas/ShippingOption'
+        recommendation:
+          type: object
+          properties:
+            carrier:
+              type: string
+            service:
+              type: string
+            rate:
+              type: number
+            savings:
+              type: number
+
+    # Return schemas
+    Return:
+      type: object
+      properties:
+        id:
+          type: string
+        order_id:
+          type: string
+        rma_number:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, shipped, received, refunded, rejected]
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              sku:
+                type: string
+              name:
+                type: string
+              quantity:
+                type: integer
+              reason:
+                type: string
+        return_label_url:
+          type: string
+        tracking_number:
+          type: string
+        refund_amount:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+
+    ReturnInput:
+      type: object
+      required:
+        - order_id
+        - items
+      properties:
+        order_id:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required:
+              - sku
+              - quantity
+              - reason
+            properties:
+              sku:
+                type: string
+              quantity:
+                type: integer
+              reason:
+                type: string
+                enum:
+                  - wrong_size
+                  - wrong_color
+                  - defective
+                  - not_as_described
+                  - changed_mind
+                  - other
+              comment:
+                type: string
+        return_method:
+          type: string
+          enum: [pickup_point, home_pickup, drop_off]
+        pickup_point_id:
+          type: string
+
+    # Webhook schemas
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+        secret:
+          type: string
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    # Common schemas
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer

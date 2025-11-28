@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Créer une Expédition - Routz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .carrier-card { transition: all 0.2s; }
+        .carrier-card:hover { transform: translateY(-2px); }
+        .carrier-card.selected { ring: 2px; ring-color: #2563eb; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white border-b sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <a href="index.html" class="text-2xl font-bold text-blue-600">Routz</a>
+                <nav class="hidden md:flex items-center gap-6 ml-8">
+                    <a href="orders.html" class="text-gray-600 hover:text-gray-900">Commandes</a>
+                    <a href="shipments.html" class="text-blue-600 font-medium">Expéditions</a>
+                    <a href="returns.html" class="text-gray-600 hover:text-gray-900">Retours</a>
+                    <a href="settings.html" class="text-gray-600 hover:text-gray-900">Paramètres</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Breadcrumb -->
+        <div class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+            <a href="shipments.html" class="hover:text-gray-700">Expéditions</a>
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            <span class="text-gray-900">Nouvelle expédition</span>
+        </div>
+
+        <h1 class="text-2xl font-bold text-gray-900 mb-8">Créer une expédition</h1>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Formulaire Principal -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Destinataire -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <i data-lucide="user" class="w-5 h-5 text-gray-400"></i>
+                        Destinataire
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+                            <input type="text" id="firstName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Jean">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                            <input type="text" id="lastName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Dupont">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Entreprise (optionnel)</label>
+                            <input type="text" id="company" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Nom de l'entreprise">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                            <input type="text" id="address1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="123 Rue de Paris">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Complément d'adresse</label>
+                            <input type="text" id="address2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Appartement, étage, bâtiment...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Code postal</label>
+                            <input type="text" id="postalCode" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="75001">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                            <input type="text" id="city" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paris">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Pays</label>
+                            <select id="country" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="FR">France</option>
+                                <option value="BE">Belgique</option>
+                                <option value="CH">Suisse</option>
+                                <option value="LU">Luxembourg</option>
+                                <option value="DE">Allemagne</option>
+                                <option value="ES">Espagne</option>
+                                <option value="IT">Italie</option>
+                                <option value="GB">Royaume-Uni</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                            <input type="tel" id="phone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="+33 6 12 34 56 78">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="client@email.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Colis -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <i data-lucide="package" class="w-5 h-5 text-gray-400"></i>
+                        Caractéristiques du colis
+                    </h2>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Poids (kg)</label>
+                            <input type="number" id="weight" step="0.1" min="0.1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="1.5" value="1.0">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Longueur (cm)</label>
+                            <input type="number" id="length" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="30" value="30">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Largeur (cm)</label>
+                            <input type="number" id="width" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="20" value="20">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Hauteur (cm)</label>
+                            <input type="number" id="height" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="15" value="15">
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Valeur déclarée (€)</label>
+                            <input type="number" id="value" step="0.01" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="100.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Contenu</label>
+                            <input type="text" id="contents" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Description du contenu">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Choix Transporteur -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <i data-lucide="truck" class="w-5 h-5 text-gray-400"></i>
+                        Choisir le transporteur
+                    </h2>
+
+                    <div class="flex gap-4 mb-4">
+                        <button onclick="filterCarriers('all')" class="filter-btn px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium" data-filter="all">Tous</button>
+                        <button onclick="filterCarriers('home')" class="filter-btn px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200" data-filter="home">Domicile</button>
+                        <button onclick="filterCarriers('pickup')" class="filter-btn px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200" data-filter="pickup">Point Relais</button>
+                        <button onclick="filterCarriers('express')" class="filter-btn px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200" data-filter="express">Express</button>
+                    </div>
+                    
+                    <div id="carrierGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Carriers loaded dynamically -->
+                    </div>
+
+                    <!-- Point Relais Selector (hidden by default) -->
+                    <div id="pickupSelector" class="hidden mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h3 class="font-medium text-gray-900 mb-3">Sélectionner un point relais</h3>
+                        <div class="flex gap-2 mb-4">
+                            <input type="text" id="pickupSearch" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg" placeholder="Code postal ou ville">
+                            <button onclick="searchPickupPoints()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Rechercher</button>
+                        </div>
+                        <div id="pickupPointsList" class="space-y-2 max-h-64 overflow-y-auto">
+                            <!-- Points loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Options -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <i data-lucide="settings" class="w-5 h-5 text-gray-400"></i>
+                        Options d'expédition
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="optSignature" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <div>
+                                <span class="font-medium text-gray-900">Signature requise</span>
+                                <p class="text-sm text-gray-500">Le destinataire doit signer à la réception</p>
+                            </div>
+                            <span class="ml-auto text-sm font-medium text-gray-600">+1.50€</span>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="optInsurance" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <div>
+                                <span class="font-medium text-gray-900">Assurance Ad Valorem</span>
+                                <p class="text-sm text-gray-500">Couverture jusqu'à la valeur déclarée</p>
+                            </div>
+                            <span class="ml-auto text-sm font-medium text-gray-600">+2.00€</span>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="optSaturday" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <div>
+                                <span class="font-medium text-gray-900">Livraison samedi</span>
+                                <p class="text-sm text-gray-500">Autoriser la livraison le samedi</p>
+                            </div>
+                            <span class="ml-auto text-sm font-medium text-gray-600">+3.00€</span>
+                        </label>
+
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="optNotify" checked class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <div>
+                                <span class="font-medium text-gray-900">Notifications client</span>
+                                <p class="text-sm text-gray-500">Email et SMS de suivi automatiques</p>
+                            </div>
+                            <span class="ml-auto text-sm font-medium text-green-600">Inclus</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Résumé -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-sm p-6 sticky top-24">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Résumé</h2>
+                    
+                    <div id="summaryContent" class="space-y-4">
+                        <div class="text-center py-8 text-gray-500">
+                            <i data-lucide="package" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                            <p>Sélectionnez un transporteur</p>
+                        </div>
+                    </div>
+
+                    <div id="summaryDetails" class="hidden">
+                        <div class="flex items-center gap-3 pb-4 border-b">
+                            <img id="summaryCarrierLogo" src="" alt="" class="w-12 h-12 object-contain">
+                            <div>
+                                <p id="summaryCarrierName" class="font-semibold text-gray-900">-</p>
+                                <p id="summaryServiceName" class="text-sm text-gray-500">-</p>
+                            </div>
+                        </div>
+
+                        <div class="py-4 space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Tarif de base</span>
+                                <span id="summaryBaseRate" class="font-medium">0.00€</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Options</span>
+                                <span id="summaryOptions" class="font-medium">0.00€</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Surcharge carburant</span>
+                                <span id="summaryFuel" class="font-medium">0.00€</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t">
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-semibold text-gray-900">Total TTC</span>
+                                <span id="summaryTotal" class="text-2xl font-bold text-blue-600">0.00€</span>
+                            </div>
+                            <p id="summaryDelivery" class="text-sm text-gray-500 mt-1">Livraison estimée: -</p>
+                        </div>
+
+                        <button onclick="createShipment()" class="w-full mt-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                            <i data-lucide="printer" class="w-5 h-5"></i>
+                            Générer l'étiquette
+                        </button>
+
+                        <p class="text-xs text-gray-500 text-center mt-3">
+                            L'étiquette sera générée au format PDF A6
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Étiquette -->
+    <div id="labelModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl max-w-lg w-full mx-4 p-6">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="check" class="w-8 h-8 text-green-600"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Expédition créée !</h3>
+                <p class="text-gray-600 mb-6">Votre étiquette est prête à être imprimée.</p>
+                
+                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                    <p class="text-sm text-gray-500">Numéro de suivi</p>
+                    <p id="trackingNumber" class="text-lg font-mono font-bold text-gray-900">-</p>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="printLabel()" class="flex-1 px-4 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 flex items-center justify-center gap-2">
+                        <i data-lucide="printer" class="w-5 h-5"></i>
+                        Imprimer
+                    </button>
+                    <button onclick="downloadLabel()" class="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 flex items-center justify-center gap-2">
+                        <i data-lucide="download" class="w-5 h-5"></i>
+                        Télécharger
+                    </button>
+                </div>
+
+                <button onclick="closeLabelModal()" class="mt-4 text-gray-500 hover:text-gray-700">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Carriers data
+        const carriers = [
+            { id: 'colissimo_home', carrier: 'colissimo', service: 'home', name: 'Colissimo', serviceName: 'Domicile', price: 6.95, delivery: '2-4 jours', type: 'home', logo: 'https://logo.clearbit.com/colissimo.fr' },
+            { id: 'colissimo_signature', carrier: 'colissimo', service: 'signature', name: 'Colissimo', serviceName: 'Domicile avec signature', price: 7.95, delivery: '2-4 jours', type: 'home', logo: 'https://logo.clearbit.com/colissimo.fr' },
+            { id: 'colissimo_pickup', carrier: 'colissimo', service: 'pickup', name: 'Colissimo', serviceName: 'Point Retrait', price: 4.95, delivery: '3-5 jours', type: 'pickup', logo: 'https://logo.clearbit.com/colissimo.fr' },
+            { id: 'chronopost_13', carrier: 'chronopost', service: '13h', name: 'Chronopost', serviceName: 'Express 13h', price: 15.90, delivery: 'Lendemain 13h', type: 'express', logo: 'https://logo.clearbit.com/chronopost.fr' },
+            { id: 'chronopost_18', carrier: 'chronopost', service: '18h', name: 'Chronopost', serviceName: 'Express 18h', price: 12.90, delivery: 'Lendemain 18h', type: 'express', logo: 'https://logo.clearbit.com/chronopost.fr' },
+            { id: 'chronopost_relais', carrier: 'chronopost', service: 'relais', name: 'Chronopost', serviceName: 'Relais', price: 6.90, delivery: '2-3 jours', type: 'pickup', logo: 'https://logo.clearbit.com/chronopost.fr' },
+            { id: 'mondial_relay', carrier: 'mondial_relay', service: 'standard', name: 'Mondial Relay', serviceName: 'Point Relais', price: 3.99, delivery: '3-6 jours', type: 'pickup', logo: 'https://logo.clearbit.com/mondialrelay.fr' },
+            { id: 'dpd_classic', carrier: 'dpd', service: 'classic', name: 'DPD', serviceName: 'Classic', price: 7.50, delivery: '2-4 jours', type: 'home', logo: 'https://logo.clearbit.com/dpd.fr' },
+            { id: 'dpd_predict', carrier: 'dpd', service: 'predict', name: 'DPD', serviceName: 'Predict', price: 8.50, delivery: '1-2 jours', type: 'home', logo: 'https://logo.clearbit.com/dpd.fr' },
+            { id: 'dpd_relais', carrier: 'dpd', service: 'relais', name: 'DPD', serviceName: 'Relais', price: 5.50, delivery: '2-4 jours', type: 'pickup', logo: 'https://logo.clearbit.com/dpd.fr' },
+            { id: 'gls_business', carrier: 'gls', service: 'business', name: 'GLS', serviceName: 'Business', price: 6.90, delivery: '2-4 jours', type: 'home', logo: 'https://logo.clearbit.com/gls-group.eu' },
+            { id: 'gls_shop', carrier: 'gls', service: 'shop', name: 'GLS', serviceName: 'Shop Delivery', price: 4.90, delivery: '3-5 jours', type: 'pickup', logo: 'https://logo.clearbit.com/gls-group.eu' }
+        ];
+
+        let selectedCarrier = null;
+        let selectedPickupPoint = null;
+
+        // Render carriers
+        function renderCarriers(filter = 'all') {
+            const grid = document.getElementById('carrierGrid');
+            const filtered = filter === 'all' ? carriers : carriers.filter(c => c.type === filter);
+            
+            grid.innerHTML = filtered.map(carrier => `
+                <div class="carrier-card p-4 border-2 rounded-xl cursor-pointer hover:border-blue-300 ${selectedCarrier?.id === carrier.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}" 
+                     onclick="selectCarrier('${carrier.id}')" data-type="${carrier.type}">
+                    <div class="flex items-center gap-3">
+                        <img src="${carrier.logo}" alt="${carrier.name}" class="w-10 h-10 object-contain rounded" onerror="this.src='https://via.placeholder.com/40'">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-900">${carrier.name}</p>
+                            <p class="text-sm text-gray-500">${carrier.serviceName}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-blue-600">${carrier.price.toFixed(2)}€</p>
+                            <p class="text-xs text-gray-500">${carrier.delivery}</p>
+                        </div>
+                    </div>
+                    ${carrier.type === 'pickup' ? '<span class="inline-block mt-2 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">Point relais requis</span>' : ''}
+                </div>
+            `).join('');
+        }
+
+        function filterCarriers(filter) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            });
+            document.querySelector(`[data-filter="${filter}"]`).classList.remove('bg-gray-100', 'text-gray-700');
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('bg-blue-600', 'text-white');
+            
+            renderCarriers(filter);
+        }
+
+        function selectCarrier(carrierId) {
+            selectedCarrier = carriers.find(c => c.id === carrierId);
+            renderCarriers(document.querySelector('.filter-btn.bg-blue-600').dataset.filter);
+            updateSummary();
+            
+            // Show/hide pickup selector
+            const pickupSelector = document.getElementById('pickupSelector');
+            if (selectedCarrier.type === 'pickup') {
+                pickupSelector.classList.remove('hidden');
+                document.getElementById('pickupSearch').value = document.getElementById('postalCode').value;
+            } else {
+                pickupSelector.classList.add('hidden');
+                selectedPickupPoint = null;
+            }
+        }
+
+        function updateSummary() {
+            if (!selectedCarrier) return;
+            
+            document.getElementById('summaryContent').classList.add('hidden');
+            document.getElementById('summaryDetails').classList.remove('hidden');
+            
+            document.getElementById('summaryCarrierLogo').src = selectedCarrier.logo;
+            document.getElementById('summaryCarrierName').textContent = selectedCarrier.name;
+            document.getElementById('summaryServiceName').textContent = selectedCarrier.serviceName;
+            document.getElementById('summaryBaseRate').textContent = selectedCarrier.price.toFixed(2) + '€';
+            
+            // Calculate options
+            let optionsTotal = 0;
+            if (document.getElementById('optSignature').checked) optionsTotal += 1.50;
+            if (document.getElementById('optInsurance').checked) optionsTotal += 2.00;
+            if (document.getElementById('optSaturday').checked) optionsTotal += 3.00;
+            
+            document.getElementById('summaryOptions').textContent = optionsTotal.toFixed(2) + '€';
+            
+            // Fuel surcharge
+            const fuel = selectedCarrier.price * 0.15;
+            document.getElementById('summaryFuel').textContent = fuel.toFixed(2) + '€';
+            
+            // Total
+            const total = selectedCarrier.price + optionsTotal + fuel;
+            document.getElementById('summaryTotal').textContent = total.toFixed(2) + '€';
+            document.getElementById('summaryDelivery').textContent = 'Livraison estimée: ' + selectedCarrier.delivery;
+            
+            lucide.createIcons();
+        }
+
+        function searchPickupPoints() {
+            const postalCode = document.getElementById('pickupSearch').value;
+            const list = document.getElementById('pickupPointsList');
+            
+            // Simulated pickup points
+            const points = [
+                { id: 'PR001', name: 'Tabac Presse du Centre', address: '15 Rue du Commerce', city: 'Lyon', distance: '350m' },
+                { id: 'PR002', name: 'Carrefour City', address: '42 Avenue Jean Jaurès', city: 'Lyon', distance: '500m' },
+                { id: 'PR003', name: 'Relais Colis Station', address: '8 Place Bellecour', city: 'Lyon', distance: '750m' },
+                { id: 'PR004', name: 'Pharmacie Centrale', address: '23 Rue de la République', city: 'Lyon', distance: '900m' }
+            ];
+            
+            list.innerHTML = points.map(point => `
+                <div class="p-3 border rounded-lg cursor-pointer hover:border-blue-300 ${selectedPickupPoint?.id === point.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}"
+                     onclick="selectPickupPoint('${point.id}', '${point.name}')">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-medium text-gray-900">${point.name}</p>
+                            <p class="text-sm text-gray-500">${point.address}, ${point.city}</p>
+                        </div>
+                        <span class="text-sm text-gray-500">${point.distance}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectPickupPoint(id, name) {
+            selectedPickupPoint = { id, name };
+            searchPickupPoints();
+        }
+
+        function createShipment() {
+            if (!selectedCarrier) {
+                alert('Veuillez sélectionner un transporteur');
+                return;
+            }
+            
+            if (selectedCarrier.type === 'pickup' && !selectedPickupPoint) {
+                alert('Veuillez sélectionner un point relais');
+                return;
+            }
+            
+            // Simulate API call
+            const trackingNumber = '6A' + Math.random().toString().substr(2, 11);
+            document.getElementById('trackingNumber').textContent = trackingNumber;
+            document.getElementById('labelModal').classList.remove('hidden');
+        }
+
+        function printLabel() {
+            window.print();
+        }
+
+        function downloadLabel() {
+            alert('Téléchargement de l\'étiquette PDF...');
+        }
+
+        function closeLabelModal() {
+            document.getElementById('labelModal').classList.add('hidden');
+        }
+
+        // Event listeners
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', updateSummary);
+        });
+
+        // Init
+        renderCarriers();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
