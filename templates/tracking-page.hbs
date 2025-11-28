@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{t 'tracking_title' lang}} - {{brand.name}}</title>
+    <meta name="description" content="Suivez votre colis {{shipment.tracking_number}} en temps réel">
+    <meta name="robots" content="noindex, nofollow">
+    
+    {{#if brand.favicon_url}}
+    <link rel="icon" href="{{brand.favicon_url}}" type="image/x-icon">
+    {{/if}}
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* CSS Variables from brand config */
+        :root {
+            --primary: {{brand.primary_color}};
+            --primary-dark: {{brand.secondary_color}};
+            --accent: {{brand.accent_color}};
+            --bg: {{brand.background_color}};
+            --text: {{brand.text_color}};
+            --radius: {{brand.border_radius}};
+            --font: {{brand.font_family}};
+            
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', var(--font);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        /* Background decoration */
+        .bg-decoration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 400px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .bg-decoration::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+        }
+        
+        .bg-decoration::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 400px;
+            height: 400px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 50%;
+        }
+        
+        /* Container */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            color: white;
+        }
+        
+        .logo {
+            max-height: 48px;
+            max-width: 180px;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            opacity: 0.95;
+        }
+        
+        .header .subtitle {
+            font-size: 15px;
+            opacity: 0.8;
+        }
+        
+        /* Main Card */
+        .main-card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.08);
+            overflow: hidden;
+            margin-top: -20px;
+            position: relative;
+        }
+        
+        /* Status Header */
+        .status-header {
+            padding: 32px;
+            text-align: center;
+            border-bottom: 1px solid var(--gray-100);
+            position: relative;
+        }
+        
+        .status-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, {{statusColor}} 0%, {{statusColor}}dd 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 30px {{statusColor}}40;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        {{#if isDelivered}}
+        .status-icon {
+            animation: none;
+        }
+        {{/if}}
+        
+        .status-text {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 8px;
+        }
+        
+        .status-description {
+            color: var(--gray-500);
+            font-size: 15px;
+        }
+        
+        /* Progress Bar */
+        .progress-section {
+            padding: 24px 32px;
+            background: var(--gray-50);
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 4px;
+            width: {{progressPercent}}%;
+            transition: width 1s ease-out;
+            position: relative;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+        
+        .progress-step {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .progress-step.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .progress-step.completed {
+            color: var(--success);
+        }
+        
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1px;
+            background: var(--gray-100);
+        }
+        
+        .info-item {
+            background: white;
+            padding: 24px;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray-500);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .info-value img {
+            height: 24px;
+            width: auto;
+        }
+        
+        .tracking-number {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: var(--gray-100);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        /* Delivery Address */
+        .delivery-section {
+            padding: 24px 32px;
+            border-top: 1px solid var(--gray-100);
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 18px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+        
+        .address-box {
+            background: var(--gray-50);
+            border-radius: calc(var(--radius) / 2);
+            padding: 20px;
+            font-size: 15px;
+            line-height: 1.8;
+        }
+        
+        .address-name {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        
+        /* Timeline */
+        .timeline-section {
+            padding: 24px 32px;
+            border-top: 1px solid var(--gray-100);
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: var(--gray-200);
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-bottom: 24px;
+        }
+        
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+        
+        .timeline-dot {
+            position: absolute;
+            left: -26px;
+            top: 4px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--gray-300);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+        
+        .timeline-item:first-child .timeline-dot {
+            background: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary)20;
+        }
+        
+        .timeline-date {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-bottom: 4px;
+        }
+        
+        .timeline-status {
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 2px;
+        }
+        
+        .timeline-location {
+            font-size: 14px;
+            color: var(--gray-500);
+        }
+        
+        /* Products Section */
+        {{#if brand.show_products}}
+        .products-section {
+            padding: 24px 32px;
+            border-top: 1px solid var(--gray-100);
+        }
+        
+        .product-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .product-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px;
+            background: var(--gray-50);
+            border-radius: 8px;
+        }
+        
+        .product-image {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid var(--gray-200);
+        }
+        
+        .product-info {
+            flex: 1;
+        }
+        
+        .product-name {
+            font-weight: 600;
+            color: var(--gray-800);
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        
+        .product-meta {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+        {{/if}}
+        
+        /* Promo Banner */
+        {{#if brand.show_promo_banner}}
+        .promo-banner {
+            padding: 24px 32px;
+            border-top: 1px solid var(--gray-100);
+        }
+        
+        .promo-card {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+            border-radius: var(--radius);
+            padding: 24px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .promo-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .promo-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        
+        .promo-content h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .promo-content p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        {{/if}}
+        
+        /* Actions */
+        .actions-section {
+            padding: 24px 32px;
+            border-top: 1px solid var(--gray-100);
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 24px;
+            border-radius: calc(var(--radius) / 2);
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--gray-200);
+        }
+        
+        /* Social & Instagram */
+        {{#if brand.instagram_embed}}
+        .instagram-section {
+            padding: 24px 32px;
+            border-top: 1px solid var(--gray-100);
+        }
+        
+        .instagram-feed {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        .instagram-item {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .instagram-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+        
+        .instagram-item:hover img {
+            transform: scale(1.05);
+        }
+        {{/if}}
+        
+        /* Footer */
+        .footer {
+            padding: 32px;
+            text-align: center;
+            border-top: 1px solid var(--gray-100);
+            background: var(--gray-50);
+        }
+        
+        .footer-brand {
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 8px;
+        }
+        
+        .footer-text {
+            font-size: 14px;
+            color: var(--gray-500);
+            margin-bottom: 16px;
+        }
+        
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .social-link {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-600);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .social-link:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .contact-info {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+        
+        .contact-info a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .powered-by {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--gray-200);
+            font-size: 12px;
+            color: var(--gray-400);
+        }
+        
+        .powered-by a {
+            color: var(--gray-500);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        /* Exception Alert */
+        {{#if isException}}
+        .exception-alert {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            border: 1px solid #fecaca;
+            border-radius: var(--radius);
+            padding: 20px;
+            margin: 24px 32px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+        
+        .exception-icon {
+            width: 40px;
+            height: 40px;
+            background: #ef4444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .exception-content h4 {
+            color: #dc2626;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .exception-content p {
+            color: #991b1b;
+            font-size: 14px;
+        }
+        {{/if}}
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .header {
+                padding: 30px 16px;
+            }
+            
+            .header h1 {
+                font-size: 22px;
+            }
+            
+            .status-header,
+            .delivery-section,
+            .timeline-section,
+            .products-section,
+            .promo-banner,
+            .actions-section,
+            .instagram-section,
+            .footer {
+                padding: 20px;
+            }
+            
+            .status-icon {
+                width: 64px;
+                height: 64px;
+                font-size: 28px;
+            }
+            
+            .status-text {
+                font-size: 20px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .actions-section {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            .progress-steps {
+                font-size: 10px;
+            }
+        }
+        
+        /* Custom CSS from brand */
+        {{brand.custom_css}}
+    </style>
+</head>
+<body>
+    <div class="bg-decoration"></div>
+    
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            {{#if brand.logo_url}}
+            <img src="{{brand.logo_url}}" alt="{{brand.name}}" class="logo">
+            {{else}}
+            <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 20px;">{{brand.name}}</h2>
+            {{/if}}
+            <h1>{{t 'tracking_title' lang}}</h1>
+            <p class="subtitle">{{t 'tracking_number' lang}}: {{shipment.tracking_number}}</p>
+        </header>
+        
+        <!-- Main Card -->
+        <main class="main-card">
+            <!-- Status Header -->
+            <div class="status-header">
+                <div class="status-icon">{{statusIcon}}</div>
+                <h2 class="status-text">{{t (concat 'status.' shipment.status) lang}}</h2>
+                {{#if shipment.estimated_delivery}}
+                {{#unless isDelivered}}
+                <p class="status-description">{{t 'estimated_delivery' lang}}: {{estimatedDeliveryFormatted}}</p>
+                {{/unless}}
+                {{/if}}
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="progress-section">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <div class="progress-steps">
+                    <div class="progress-step {{#if (gt progressPercent 10)}}completed{{/if}}">📦 Créé</div>
+                    <div class="progress-step {{#if (gt progressPercent 30)}}completed{{/if}}">🚚 Pris en charge</div>
+                    <div class="progress-step {{#if (gt progressPercent 50)}}completed{{/if}}">🚛 En transit</div>
+                    <div class="progress-step {{#if (gt progressPercent 80)}}completed{{/if}}">🛵 En livraison</div>
+                    <div class="progress-step {{#if (eq progressPercent 100)}}completed{{/if}}">✅ Livré</div>
+                </div>
+            </div>
+            
+            {{#if isException}}
+            <!-- Exception Alert -->
+            <div class="exception-alert">
+                <div class="exception-icon">⚠️</div>
+                <div class="exception-content">
+                    <h4>Incident de livraison</h4>
+                    <p>Un problème a été signalé. Notre équipe fait le nécessaire pour résoudre la situation.</p>
+                </div>
+            </div>
+            {{/if}}
+            
+            <!-- Info Grid -->
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">{{t 'tracking_number' lang}}</div>
+                    <div class="info-value">
+                        <span class="tracking-number">{{shipment.tracking_number}}</span>
+                    </div>
+                </div>
+                {{#if order}}
+                <div class="info-item">
+                    <div class="info-label">{{t 'order_number' lang}}</div>
+                    <div class="info-value">{{order.order_number}}</div>
+                </div>
+                {{/if}}
+                <div class="info-item">
+                    <div class="info-label">{{t 'carrier' lang}}</div>
+                    <div class="info-value">
+                        {{#if brand.show_carrier_logo}}
+                        <img src="{{carrierLogo}}" alt="{{carrierName}}">
+                        {{/if}}
+                        {{carrierName}}
+                    </div>
+                </div>
+                {{#if shipment.estimated_delivery}}
+                <div class="info-item">
+                    <div class="info-label">{{t 'estimated_delivery' lang}}</div>
+                    <div class="info-value">{{estimatedDeliveryFormatted}}</div>
+                </div>
+                {{/if}}
+            </div>
+            
+            <!-- Delivery Address -->
+            <div class="delivery-section">
+                <h3 class="section-title">{{t 'delivery_address' lang}}</h3>
+                <div class="address-box">
+                    <div class="address-name">{{shipment.recipient_name}}</div>
+                    {{#if shipment.recipient_company}}{{shipment.recipient_company}}<br>{{/if}}
+                    {{shipment.recipient_address1}}<br>
+                    {{#if shipment.recipient_address2}}{{shipment.recipient_address2}}<br>{{/if}}
+                    {{shipment.recipient_postal_code}} {{shipment.recipient_city}}<br>
+                    {{shipment.recipient_country}}
+                </div>
+            </div>
+            
+            <!-- Timeline -->
+            {{#if events.length}}
+            <div class="timeline-section">
+                <h3 class="section-title">{{t 'timeline_title' lang}}</h3>
+                <div class="timeline">
+                    {{#each events}}
+                    <div class="timeline-item">
+                        <div class="timeline-dot">{{this.icon}}</div>
+                        <div class="timeline-date">{{this.formattedDate}} à {{this.formattedTime}}</div>
+                        <div class="timeline-status">{{this.description}}</div>
+                        {{#if this.location}}
+                        <div class="timeline-location">📍 {{this.location}}</div>
+                        {{/if}}
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+            {{/if}}
+            
+            <!-- Products -->
+            {{#if brand.show_products}}
+            {{#if order.order_items}}
+            <div class="products-section">
+                <h3 class="section-title">{{t 'products_ordered' lang}}</h3>
+                <div class="product-list">
+                    {{#each order.order_items}}
+                    <div class="product-item">
+                        {{#if this.image}}
+                        <img src="{{this.image}}" alt="{{this.name}}" class="product-image">
+                        {{else}}
+                        <div class="product-image" style="display: flex; align-items: center; justify-content: center; font-size: 24px; background: var(--gray-100);">📦</div>
+                        {{/if}}
+                        <div class="product-info">
+                            <div class="product-name">{{this.name}}</div>
+                            <div class="product-meta">Qté: {{this.quantity}} {{#if this.sku}}• SKU: {{this.sku}}{{/if}}</div>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+            {{/if}}
+            {{/if}}
+            
+            <!-- Promo Banner -->
+            {{#if brand.show_promo_banner}}
+            <div class="promo-banner">
+                <a href="{{brand.promo_banner_url}}" class="promo-card" target="_blank">
+                    {{#if brand.promo_banner_image}}
+                    <img src="{{brand.promo_banner_image}}" alt="" class="promo-image">
+                    {{/if}}
+                    <div class="promo-content">
+                        <h3>{{t 'promo_title' lang}}</h3>
+                        <p>{{brand.promo_banner_text}}</p>
+                    </div>
+                </a>
+            </div>
+            {{/if}}
+            
+            <!-- Actions -->
+            <div class="actions-section">
+                {{#if brand.support_url}}
+                <a href="{{brand.support_url}}" class="btn btn-primary" target="_blank">
+                    <span>💬</span> {{t 'cta_help' lang}}
+                </a>
+                {{/if}}
+                <a href="{{returnUrl}}" class="btn btn-secondary">
+                    <span>↩️</span> {{t 'return_package' lang}}
+                </a>
+            </div>
+            
+            <!-- Instagram Embed -->
+            {{#if brand.instagram_embed}}
+            {{#if brand.instagram_url}}
+            <div class="instagram-section">
+                <h3 class="section-title">{{t 'follow_us' lang}} sur Instagram</h3>
+                <div class="instagram-feed" id="instagram-feed">
+                    <!-- Instagram feed will be loaded dynamically -->
+                </div>
+                <div style="text-align: center; margin-top: 16px;">
+                    <a href="{{brand.instagram_url}}" class="btn btn-secondary" target="_blank">
+                        <span>📷</span> @{{extractInstagramHandle brand.instagram_url}}
+                    </a>
+                </div>
+            </div>
+            {{/if}}
+            {{/if}}
+            
+            <!-- Footer -->
+            <footer class="footer">
+                <div class="footer-brand">{{brand.name}}</div>
+                <p class="footer-text">{{t 'footer_text' lang}}</p>
+                
+                <div class="social-links">
+                    {{#if brand.instagram_url}}
+                    <a href="{{brand.instagram_url}}" class="social-link" target="_blank" title="Instagram">📷</a>
+                    {{/if}}
+                    {{#if brand.facebook_url}}
+                    <a href="{{brand.facebook_url}}" class="social-link" target="_blank" title="Facebook">👤</a>
+                    {{/if}}
+                    {{#if brand.twitter_url}}
+                    <a href="{{brand.twitter_url}}" class="social-link" target="_blank" title="Twitter">🐦</a>
+                    {{/if}}
+                </div>
+                
+                <div class="contact-info">
+                    {{#if brand.support_email}}
+                    <a href="mailto:{{brand.support_email}}">{{brand.support_email}}</a>
+                    {{/if}}
+                    {{#if brand.support_phone}}
+                    • <a href="tel:{{brand.support_phone}}">{{brand.support_phone}}</a>
+                    {{/if}}
+                </div>
+                
+                <div class="powered-by">
+                    Suivi propulsé par <a href="https://routz.io" target="_blank">Routz</a>
+                </div>
+            </footer>
+        </main>
+    </div>
+    
+    <script>
+        // Auto-refresh for non-delivered shipments
+        {{#unless isDelivered}}
+        setTimeout(() => {
+            window.location.reload();
+        }, 60000); // Refresh every minute
+        {{/unless}}
+        
+        // Copy tracking number
+        document.querySelector('.tracking-number')?.addEventListener('click', function() {
+            navigator.clipboard.writeText('{{shipment.tracking_number}}');
+            this.style.background = 'var(--success)';
+            this.style.color = 'white';
+            setTimeout(() => {
+                this.style.background = '';
+                this.style.color = '';
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

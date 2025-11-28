@@ -1,0 +1,475 @@
+{{!-- Widget de tracking compact embeddable --}}
+<div class="routz-tracking-widget {{#if compact}}routz-compact{{/if}}" 
+     data-tracking="{{shipment.tracking_number}}"
+     style="
+        --routz-primary: {{brand.primary_color}};
+        --routz-secondary: {{brand.secondary_color}};
+        --routz-accent: {{brand.accent_color}};
+        --routz-bg: {{brand.background_color}};
+        --routz-text: {{brand.text_color}};
+        --routz-radius: {{brand.border_radius}};
+        font-family: {{brand.font_family}};
+     ">
+    
+    <style>
+        .routz-tracking-widget {
+            --routz-white: #ffffff;
+            --routz-gray-50: #f9fafb;
+            --routz-gray-100: #f3f4f6;
+            --routz-gray-200: #e5e7eb;
+            --routz-gray-300: #d1d5db;
+            --routz-gray-400: #9ca3af;
+            --routz-gray-500: #6b7280;
+            --routz-gray-600: #4b5563;
+            --routz-gray-700: #374151;
+            --routz-gray-800: #1f2937;
+            --routz-success: #10b981;
+            --routz-warning: #f59e0b;
+            --routz-error: #ef4444;
+            
+            background: var(--routz-white);
+            border-radius: var(--routz-radius);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 4px 20px rgba(0,0,0,0.05);
+            overflow: hidden;
+            max-width: 100%;
+        }
+        
+        .routz-tracking-widget * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Header */
+        .routz-widget-header {
+            background: linear-gradient(135deg, var(--routz-primary) 0%, var(--routz-secondary) 100%);
+            padding: 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .routz-compact .routz-widget-header {
+            padding: 16px;
+        }
+        
+        .routz-status-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .routz-compact .routz-status-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+        }
+        
+        .routz-status-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .routz-status-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+            margin-bottom: 2px;
+        }
+        
+        .routz-status-text {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .routz-compact .routz-status-text {
+            font-size: 16px;
+        }
+        
+        .routz-eta {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+        
+        /* Progress */
+        .routz-progress-section {
+            padding: 16px 20px;
+            background: var(--routz-gray-50);
+        }
+        
+        .routz-compact .routz-progress-section {
+            padding: 12px 16px;
+        }
+        
+        .routz-progress-bar {
+            height: 6px;
+            background: var(--routz-gray-200);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .routz-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--routz-primary), var(--routz-accent));
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        
+        .routz-progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 18px;
+        }
+        
+        .routz-progress-step {
+            opacity: 0.3;
+            transition: opacity 0.3s;
+        }
+        
+        .routz-progress-step.active {
+            opacity: 1;
+        }
+        
+        /* Body */
+        .routz-widget-body {
+            padding: 20px;
+        }
+        
+        .routz-compact .routz-widget-body {
+            padding: 16px;
+        }
+        
+        /* Info Grid */
+        .routz-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .routz-compact .routz-info-grid {
+            gap: 12px;
+        }
+        
+        .routz-info-item {
+            
+        }
+        
+        .routz-info-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--routz-gray-500);
+            margin-bottom: 4px;
+        }
+        
+        .routz-info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--routz-gray-800);
+        }
+        
+        .routz-tracking-number {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: var(--routz-gray-100);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        
+        .routz-tracking-number:hover {
+            background: var(--routz-gray-200);
+        }
+        
+        /* Timeline */
+        .routz-timeline {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--routz-gray-200);
+        }
+        
+        .routz-compact .routz-timeline {
+            display: none;
+        }
+        
+        .routz-timeline-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--routz-gray-800);
+            margin-bottom: 16px;
+        }
+        
+        .routz-timeline-item {
+            display: flex;
+            gap: 12px;
+            padding-bottom: 16px;
+            position: relative;
+        }
+        
+        .routz-timeline-item:last-child {
+            padding-bottom: 0;
+        }
+        
+        .routz-timeline-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 20px;
+            bottom: 0;
+            width: 2px;
+            background: var(--routz-gray-200);
+        }
+        
+        .routz-timeline-item.current::before {
+            background: var(--routz-primary);
+        }
+        
+        .routz-timeline-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--routz-gray-300);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .routz-timeline-item.current .routz-timeline-dot {
+            background: var(--routz-primary);
+            box-shadow: 0 0 0 4px rgba(var(--routz-primary), 0.2);
+        }
+        
+        .routz-timeline-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .routz-timeline-event {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--routz-gray-800);
+        }
+        
+        .routz-timeline-meta {
+            font-size: 12px;
+            color: var(--routz-gray-500);
+            margin-top: 2px;
+        }
+        
+        /* Footer */
+        .routz-widget-footer {
+            padding: 16px 20px;
+            background: var(--routz-gray-50);
+            border-top: 1px solid var(--routz-gray-100);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .routz-compact .routz-widget-footer {
+            padding: 12px 16px;
+        }
+        
+        .routz-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .routz-brand-logo {
+            height: 24px;
+            width: auto;
+        }
+        
+        .routz-brand-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--routz-gray-700);
+        }
+        
+        .routz-details-link {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--routz-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .routz-details-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Powered by */
+        .routz-powered {
+            text-align: center;
+            padding: 8px;
+            font-size: 10px;
+            color: var(--routz-gray-400);
+        }
+        
+        .routz-powered a {
+            color: var(--routz-gray-500);
+            text-decoration: none;
+        }
+        
+        .routz-powered a:hover {
+            color: var(--routz-primary);
+        }
+        
+        /* Animations */
+        @keyframes routz-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .routz-status-icon.routz-animate {
+            animation: routz-pulse 2s infinite;
+        }
+        
+        /* Responsive */
+        @media (max-width: 400px) {
+            .routz-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    
+    <!-- Header -->
+    <div class="routz-widget-header">
+        <div class="routz-status-icon {{#unless isDelivered}}routz-animate{{/unless}}">
+            {{statusIcon}}
+        </div>
+        <div class="routz-status-info">
+            <div class="routz-status-label">{{t 'status_label' lang}}</div>
+            <div class="routz-status-text">{{t (concat 'status.' shipment.status) lang}}</div>
+            {{#if estimatedDelivery}}
+            {{#unless isDelivered}}
+            <div class="routz-eta">{{t 'estimated' lang}}: {{estimatedDeliveryFormatted}}</div>
+            {{/unless}}
+            {{/if}}
+        </div>
+    </div>
+    
+    <!-- Progress Bar -->
+    <div class="routz-progress-section">
+        <div class="routz-progress-bar">
+            <div class="routz-progress-fill" style="width: {{progressPercent}}%"></div>
+        </div>
+        <div class="routz-progress-steps">
+            <span class="routz-progress-step {{#if (gte progressPercent 10)}}active{{/if}}">📦</span>
+            <span class="routz-progress-step {{#if (gte progressPercent 30)}}active{{/if}}">🚚</span>
+            <span class="routz-progress-step {{#if (gte progressPercent 60)}}active{{/if}}">🚛</span>
+            <span class="routz-progress-step {{#if (gte progressPercent 85)}}active{{/if}}">🛵</span>
+            <span class="routz-progress-step {{#if (eq progressPercent 100)}}active{{/if}}">✅</span>
+        </div>
+    </div>
+    
+    <!-- Body -->
+    <div class="routz-widget-body">
+        <!-- Info Grid -->
+        <div class="routz-info-grid">
+            <div class="routz-info-item">
+                <div class="routz-info-label">{{t 'tracking_number' lang}}</div>
+                <div class="routz-info-value">
+                    <span class="routz-tracking-number" onclick="navigator.clipboard.writeText('{{shipment.tracking_number}}')" title="{{t 'click_to_copy' lang}}">
+                        {{shipment.tracking_number}}
+                    </span>
+                </div>
+            </div>
+            <div class="routz-info-item">
+                <div class="routz-info-label">{{t 'carrier' lang}}</div>
+                <div class="routz-info-value">{{carrierName}}</div>
+            </div>
+            {{#if order}}
+            <div class="routz-info-item">
+                <div class="routz-info-label">{{t 'order' lang}}</div>
+                <div class="routz-info-value">{{order.order_number}}</div>
+            </div>
+            {{/if}}
+            {{#if shipment.recipient_city}}
+            <div class="routz-info-item">
+                <div class="routz-info-label">{{t 'destination' lang}}</div>
+                <div class="routz-info-value">{{shipment.recipient_city}}</div>
+            </div>
+            {{/if}}
+        </div>
+        
+        <!-- Timeline (full version only) -->
+        {{#unless compact}}
+        {{#if events}}
+        <div class="routz-timeline">
+            <div class="routz-timeline-title">{{t 'tracking_history' lang}}</div>
+            {{#each events}}
+            <div class="routz-timeline-item {{#if @first}}current{{/if}}">
+                <div class="routz-timeline-dot"></div>
+                <div class="routz-timeline-content">
+                    <div class="routz-timeline-event">{{this.description}}</div>
+                    <div class="routz-timeline-meta">
+                        {{formatDate this.timestamp 'datetime' ../lang}}
+                        {{#if this.location}} • {{this.location}}{{/if}}
+                    </div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+        {{/unless}}
+    </div>
+    
+    <!-- Footer -->
+    <div class="routz-widget-footer">
+        <div class="routz-brand">
+            {{#if brand.logo_url}}
+            <img src="{{brand.logo_url}}" alt="{{brand.name}}" class="routz-brand-logo">
+            {{else}}
+            <span class="routz-brand-name">{{brand.name}}</span>
+            {{/if}}
+        </div>
+        <a href="{{trackingPageUrl}}" target="_blank" class="routz-details-link">
+            {{t 'view_details' lang}} →
+        </a>
+    </div>
+    
+    <!-- Powered by -->
+    <div class="routz-powered">
+        Suivi par <a href="https://routz.io" target="_blank">Routz</a>
+    </div>
+</div>
+
+<script>
+(function() {
+    const widget = document.querySelector('[data-tracking="{{shipment.tracking_number}}"]');
+    if (!widget) return;
+    
+    // Copy tracking number
+    const trackingEl = widget.querySelector('.routz-tracking-number');
+    if (trackingEl) {
+        trackingEl.addEventListener('click', function() {
+            navigator.clipboard.writeText('{{shipment.tracking_number}}');
+            const original = this.textContent;
+            this.textContent = '✓ Copié!';
+            setTimeout(() => this.textContent = original, 1500);
+        });
+    }
+    
+    {{#unless isDelivered}}
+    // Auto-refresh every 5 minutes for non-delivered shipments
+    setTimeout(() => {
+        window.location.reload();
+    }, 5 * 60 * 1000);
+    {{/unless}}
+})();
+</script>

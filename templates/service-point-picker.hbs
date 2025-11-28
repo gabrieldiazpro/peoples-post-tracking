@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{config.labels.title}}</title>
+    
+    <!-- Mapbox GL JS -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --spp-primary: {{config.primary_color}};
+            --spp-primary-light: {{config.primary_color}}15;
+            --spp-primary-dark: {{config.primary_color}}dd;
+            --spp-radius: {{config.border_radius}};
+            --spp-font: {{config.font_family}};
+            
+            --spp-white: #ffffff;
+            --spp-gray-50: #f9fafb;
+            --spp-gray-100: #f3f4f6;
+            --spp-gray-200: #e5e7eb;
+            --spp-gray-300: #d1d5db;
+            --spp-gray-400: #9ca3af;
+            --spp-gray-500: #6b7280;
+            --spp-gray-600: #4b5563;
+            --spp-gray-700: #374151;
+            --spp-gray-800: #1f2937;
+            --spp-gray-900: #111827;
+            
+            --spp-success: #10b981;
+            --spp-warning: #f59e0b;
+            --spp-error: #ef4444;
+        }
+        
+        /* Dark theme */
+        .spp-dark {
+            --spp-white: #1f2937;
+            --spp-gray-50: #111827;
+            --spp-gray-100: #1f2937;
+            --spp-gray-200: #374151;
+            --spp-gray-300: #4b5563;
+            --spp-gray-400: #6b7280;
+            --spp-gray-500: #9ca3af;
+            --spp-gray-600: #d1d5db;
+            --spp-gray-700: #e5e7eb;
+            --spp-gray-800: #f3f4f6;
+            --spp-gray-900: #f9fafb;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        .spp-container {
+            font-family: var(--spp-font);
+            background: var(--spp-white);
+            border-radius: var(--spp-radius);
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+            max-height: 90vh;
+        }
+        
+        /* Header */
+        .spp-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--spp-gray-200);
+            background: var(--spp-white);
+        }
+        
+        .spp-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--spp-gray-900);
+            margin-bottom: 16px;
+        }
+        
+        /* Search */
+        .spp-search {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .spp-search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--spp-gray-200);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--spp-gray-800);
+            background: var(--spp-white);
+            transition: all 0.2s;
+        }
+        
+        .spp-search-input:focus {
+            outline: none;
+            border-color: var(--spp-primary);
+            box-shadow: 0 0 0 3px var(--spp-primary-light);
+        }
+        
+        .spp-search-btn {
+            padding: 12px 24px;
+            background: var(--spp-primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .spp-search-btn:hover {
+            background: var(--spp-primary-dark);
+        }
+        
+        .spp-search-btn:disabled {
+            background: var(--spp-gray-300);
+            cursor: not-allowed;
+        }
+        
+        /* Filters */
+        .spp-filters {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .spp-filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 1px solid var(--spp-gray-200);
+            border-radius: 20px;
+            background: var(--spp-white);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--spp-gray-600);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .spp-filter-btn:hover {
+            border-color: var(--spp-gray-300);
+            background: var(--spp-gray-50);
+        }
+        
+        .spp-filter-btn.active {
+            border-color: var(--spp-primary);
+            background: var(--spp-primary-light);
+            color: var(--spp-primary);
+        }
+        
+        .spp-filter-logo {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+        }
+        
+        /* View Toggle */
+        .spp-view-toggle {
+            display: flex;
+            background: var(--spp-gray-100);
+            border-radius: 8px;
+            padding: 4px;
+            margin-left: auto;
+        }
+        
+        .spp-view-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--spp-gray-500);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .spp-view-btn.active {
+            background: var(--spp-white);
+            color: var(--spp-gray-800);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        
+        /* Main Content */
+        .spp-content {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+        }
+        
+        /* Map */
+        .spp-map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        .spp-map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* List */
+        .spp-list-container {
+            width: 380px;
+            background: var(--spp-white);
+            border-left: 1px solid var(--spp-gray-200);
+            overflow-y: auto;
+        }
+        
+        .spp-list-container.full-width {
+            width: 100%;
+            border-left: none;
+        }
+        
+        /* Point Card */
+        .spp-point {
+            padding: 16px;
+            border-bottom: 1px solid var(--spp-gray-100);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .spp-point:hover {
+            background: var(--spp-gray-50);
+        }
+        
+        .spp-point.active {
+            background: var(--spp-primary-light);
+            border-left: 3px solid var(--spp-primary);
+        }
+        
+        .spp-point.selected {
+            background: var(--spp-success)15;
+            border-left: 3px solid var(--spp-success);
+        }
+        
+        .spp-point-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .spp-point-logo {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        
+        .spp-point-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .spp-point-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--spp-gray-800);
+            margin-bottom: 2px;
+        }
+        
+        .spp-point-carrier {
+            font-size: 12px;
+            color: var(--spp-gray-500);
+        }
+        
+        .spp-point-distance {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--spp-primary);
+            white-space: nowrap;
+        }
+        
+        .spp-point-address {
+            font-size: 13px;
+            color: var(--spp-gray-600);
+            margin-bottom: 8px;
+        }
+        
+        .spp-point-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        
+        .spp-point-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .spp-point-status.open {
+            background: var(--spp-success)15;
+            color: #059669;
+        }
+        
+        .spp-point-status.closed {
+            background: var(--spp-gray-100);
+            color: var(--spp-gray-500);
+        }
+        
+        .spp-select-btn {
+            padding: 8px 16px;
+            background: var(--spp-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .spp-select-btn:hover {
+            background: var(--spp-primary-dark);
+            transform: translateY(-1px);
+        }
+        
+        .spp-select-btn.selected {
+            background: var(--spp-success);
+        }
+        
+        /* Opening Hours */
+        .spp-hours {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--spp-gray-100);
+        }
+        
+        .spp-hours-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--spp-gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .spp-hours-grid {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 4px;
+            font-size: 12px;
+        }
+        
+        .spp-hours-day {
+            color: var(--spp-gray-500);
+        }
+        
+        .spp-hours-time {
+            color: var(--spp-gray-700);
+        }
+        
+        /* Map Marker */
+        .spp-marker {
+            width: 36px;
+            height: 36px;
+            background: var(--spp-primary);
+            border: 3px solid white;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .spp-marker:hover {
+            transform: rotate(-45deg) scale(1.1);
+        }
+        
+        .spp-marker.active {
+            background: var(--spp-success);
+            z-index: 10 !important;
+        }
+        
+        .spp-marker-logo {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            border-radius: 50%;
+            background: white;
+            object-fit: contain;
+        }
+        
+        /* Popup */
+        .mapboxgl-popup-content {
+            padding: 0;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-width: 280px;
+        }
+        
+        .spp-popup {
+            padding: 16px;
+        }
+        
+        .spp-popup-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        
+        .spp-popup-logo {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+        
+        .spp-popup-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--spp-gray-800);
+        }
+        
+        .spp-popup-address {
+            font-size: 13px;
+            color: var(--spp-gray-600);
+            margin-bottom: 12px;
+        }
+        
+        /* Loading */
+        .spp-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: var(--spp-gray-500);
+        }
+        
+        .spp-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--spp-gray-200);
+            border-top-color: var(--spp-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* No Results */
+        .spp-no-results {
+            padding: 60px 20px;
+            text-align: center;
+        }
+        
+        .spp-no-results-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .spp-no-results-text {
+            font-size: 15px;
+            color: var(--spp-gray-500);
+        }
+        
+        /* Footer */
+        .spp-footer {
+            padding: 16px 20px;
+            background: var(--spp-gray-50);
+            border-top: 1px solid var(--spp-gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .spp-selected-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .spp-selected-check {
+            width: 24px;
+            height: 24px;
+            background: var(--spp-success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .spp-selected-text {
+            font-size: 14px;
+            color: var(--spp-gray-700);
+        }
+        
+        .spp-selected-name {
+            font-weight: 600;
+        }
+        
+        .spp-confirm-btn {
+            padding: 14px 28px;
+            background: var(--spp-success);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .spp-confirm-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .spp-confirm-btn:disabled {
+            background: var(--spp-gray-300);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* Mobile */
+        @media (max-width: 768px) {
+            .spp-container {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+            
+            .spp-content {
+                flex-direction: column;
+            }
+            
+            .spp-map-container {
+                height: 250px;
+                flex: none;
+            }
+            
+            .spp-list-container {
+                width: 100%;
+                flex: 1;
+                border-left: none;
+                border-top: 1px solid var(--spp-gray-200);
+            }
+            
+            .spp-filters {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                padding-bottom: 4px;
+            }
+            
+            .spp-filter-btn {
+                flex-shrink: 0;
+            }
+        }
+        
+        /* Custom scrollbar */
+        .spp-list-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .spp-list-container::-webkit-scrollbar-track {
+            background: var(--spp-gray-100);
+        }
+        
+        .spp-list-container::-webkit-scrollbar-thumb {
+            background: var(--spp-gray-300);
+            border-radius: 3px;
+        }
+        
+        .spp-list-container::-webkit-scrollbar-thumb:hover {
+            background: var(--spp-gray-400);
+        }
+    </style>
+</head>
+<body>
+    <div class="spp-container {{#if (eq config.theme 'dark')}}spp-dark{{/if}}" id="servicePointPicker">
+        <!-- Header -->
+        <div class="spp-header">
+            <h2 class="spp-title">{{labels.title}}</h2>
+            
+            <!-- Search -->
+            <div class="spp-search">
+                <input type="text" 
+                       class="spp-search-input" 
+                       id="sppSearchInput"
+                       placeholder="{{labels.search_placeholder}}"
+                       value="{{initialPostalCode}}">
+                <button class="spp-search-btn" id="sppSearchBtn">
+                    🔍 {{labels.search_button}}
+                </button>
+            </div>
+            
+            <!-- Filters & View Toggle -->
+            <div class="spp-filters">
+                <button class="spp-filter-btn active" data-carrier="all">
+                    {{labels.filter_all}}
+                </button>
+                {{#each carriers}}
+                <button class="spp-filter-btn" data-carrier="{{this.id}}">
+                    <img src="{{this.logo}}" alt="{{this.name}}" class="spp-filter-logo">
+                    {{this.name}}
+                </button>
+                {{/each}}
+                
+                <div class="spp-view-toggle">
+                    <button class="spp-view-btn active" data-view="map">
+                        🗺️ {{labels.view_map}}
+                    </button>
+                    <button class="spp-view-btn" data-view="list">
+                        📋 {{labels.view_list}}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="spp-content">
+            <!-- Map -->
+            <div class="spp-map-container" id="sppMapContainer">
+                <div class="spp-map" id="sppMap"></div>
+            </div>
+            
+            <!-- List -->
+            <div class="spp-list-container" id="sppList">
+                <!-- Loading State -->
+                <div class="spp-loading" id="sppLoading" style="display: none;">
+                    <div class="spp-spinner"></div>
+                    <span>Recherche en cours...</span>
+                </div>
+                
+                <!-- No Results -->
+                <div class="spp-no-results" id="sppNoResults" style="display: none;">
+                    <div class="spp-no-results-icon">📍</div>
+                    <p class="spp-no-results-text">{{labels.no_results}}</p>
+                </div>
+                
+                <!-- Points List -->
+                <div id="sppPointsList"></div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="spp-footer" id="sppFooter" style="display: none;">
+            <div class="spp-selected-info">
+                <div class="spp-selected-check">✓</div>
+                <div class="spp-selected-text">
+                    <span class="spp-selected-name" id="sppSelectedName"></span>
+                </div>
+            </div>
+            <button class="spp-confirm-btn" id="sppConfirmBtn">
+                Confirmer →
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const SPP_CONFIG = {
+            apiUrl: '{{apiUrl}}',
+            mapboxToken: '{{mapboxToken}}',
+            lang: '{{lang}}',
+            labels: {{{json labels}}},
+            defaultView: '{{config.default_view}}',
+            maxResults: {{config.max_results}},
+            maxDistance: {{config.max_distance}},
+            autoSelectNearest: {{config.auto_select_nearest}},
+            mapZoom: {{config.map_zoom_default}},
+            enabledCarriers: {{{json config.enabled_carriers}}}
+        };
+        
+        // State
+        let state = {
+            points: [],
+            filteredPoints: [],
+            selectedPoint: null,
+            activePoint: null,
+            currentFilter: 'all',
+            currentView: SPP_CONFIG.defaultView,
+            map: null,
+            markers: [],
+            popup: null
+        };
+        
+        // DOM Elements
+        const elements = {
+            searchInput: document.getElementById('sppSearchInput'),
+            searchBtn: document.getElementById('sppSearchBtn'),
+            mapContainer: document.getElementById('sppMapContainer'),
+            map: document.getElementById('sppMap'),
+            list: document.getElementById('sppList'),
+            pointsList: document.getElementById('sppPointsList'),
+            loading: document.getElementById('sppLoading'),
+            noResults: document.getElementById('sppNoResults'),
+            footer: document.getElementById('sppFooter'),
+            selectedName: document.getElementById('sppSelectedName'),
+            confirmBtn: document.getElementById('sppConfirmBtn')
+        };
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            initEventListeners();
+            
+            // Auto-search if initial postal code provided
+            if (elements.searchInput.value) {
+                search();
+            }
+        });
+        
+        // Initialize Map
+        function initMap() {
+            mapboxgl.accessToken = SPP_CONFIG.mapboxToken;
+            
+            state.map = new mapboxgl.Map({
+                container: 'sppMap',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                center: [2.3522, 48.8566], // Paris default
+                zoom: 11
+            });
+            
+            state.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+            
+            // Geolocation
+            state.map.addControl(new mapboxgl.GeolocateControl({
+                positionOptions: { enableHighAccuracy: true },
+                trackUserLocation: false,
+                showUserHeading: false
+            }), 'top-right');
+        }
+        
+        // Event Listeners
+        function initEventListeners() {
+            // Search
+            elements.searchBtn.addEventListener('click', search);
+            elements.searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') search();
+            });
+            
+            // Filters
+            document.querySelectorAll('.spp-filter-btn[data-carrier]').forEach(btn => {
+                btn.addEventListener('click', () => filterByCarrier(btn.dataset.carrier));
+            });
+            
+            // View toggle
+            document.querySelectorAll('.spp-view-btn[data-view]').forEach(btn => {
+                btn.addEventListener('click', () => setView(btn.dataset.view));
+            });
+            
+            // Confirm
+            elements.confirmBtn.addEventListener('click', confirmSelection);
+        }
+        
+        // Search
+        async function search() {
+            const query = elements.searchInput.value.trim();
+            if (!query) return;
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`${SPP_CONFIG.apiUrl}/api/service-points/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        postalCode: query,
+                        country: '{{country}}',
+                        carriers: SPP_CONFIG.enabledCarriers,
+                        maxResults: SPP_CONFIG.maxResults,
+                        maxDistance: SPP_CONFIG.maxDistance
+                    })
+                });
+                
+                const data = await response.json();
+                state.points = data.points || [];
+                state.filteredPoints = [...state.points];
+                
+                if (state.points.length > 0) {
+                    renderPoints();
+                    updateMap();
+                    
+                    // Auto-select nearest
+                    if (SPP_CONFIG.autoSelectNearest) {
+                        selectPoint(state.points[0]);
+                    }
+                } else {
+                    showNoResults(true);
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                showNoResults(true);
+            }
+            
+            showLoading(false);
+        }
+        
+        // Render Points
+        function renderPoints() {
+            elements.pointsList.innerHTML = state.filteredPoints.map((point, index) => `
+                <div class="spp-point ${state.activePoint?.id === point.id ? 'active' : ''} ${state.selectedPoint?.id === point.id ? 'selected' : ''}"
+                     data-point-id="${point.id}"
+                     onclick="handlePointClick('${point.id}')">
+                    <div class="spp-point-header">
+                        <img src="${point.carrierLogo}" alt="${point.carrierName}" class="spp-point-logo">
+                        <div class="spp-point-info">
+                            <div class="spp-point-name">${point.name}</div>
+                            <div class="spp-point-carrier">${point.carrierName}</div>
+                        </div>
+                        <div class="spp-point-distance">${formatDistance(point.distance)}</div>
+                    </div>
+                    <div class="spp-point-address">
+                        ${point.address}<br>
+                        ${point.postalCode} ${point.city}
+                    </div>
+                    <div class="spp-point-footer">
+                        <div class="spp-point-status ${isOpen(point) ? 'open' : 'closed'}">
+                            ${isOpen(point) ? '🟢 ' + SPP_CONFIG.labels.open_now : '⚪ ' + SPP_CONFIG.labels.closed}
+                        </div>
+                        <button class="spp-select-btn ${state.selectedPoint?.id === point.id ? 'selected' : ''}"
+                                onclick="event.stopPropagation(); selectPoint(state.points.find(p => p.id === '${point.id}'))">
+                            ${state.selectedPoint?.id === point.id ? '✓ ' + SPP_CONFIG.labels.selected : SPP_CONFIG.labels.select_button}
+                        </button>
+                    </div>
+                    ${renderOpeningHours(point)}
+                </div>
+            `).join('');
+            
+            showNoResults(false);
+        }
+        
+        function renderOpeningHours(point) {
+            if (!point.openingHours || typeof point.openingHours !== 'object') return '';
+            
+            const days = Object.entries(point.openingHours);
+            if (days.length === 0) return '';
+            
+            return `
+                <div class="spp-hours">
+                    <div class="spp-hours-title">${SPP_CONFIG.labels.opening_hours}</div>
+                    <div class="spp-hours-grid">
+                        ${days.slice(0, 7).map(([day, hours]) => `
+                            <span class="spp-hours-day">${day}</span>
+                            <span class="spp-hours-time">${hours}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Update Map
+        function updateMap() {
+            // Clear existing markers
+            state.markers.forEach(m => m.remove());
+            state.markers = [];
+            
+            if (state.filteredPoints.length === 0) return;
+            
+            // Add markers
+            const bounds = new mapboxgl.LngLatBounds();
+            
+            state.filteredPoints.forEach(point => {
+                const el = document.createElement('div');
+                el.className = 'spp-marker';
+                el.style.setProperty('--marker-color', point.carrierColor);
+                el.innerHTML = `<img src="${point.carrierLogo}" class="spp-marker-logo" alt="">`;
+                
+                if (state.selectedPoint?.id === point.id) {
+                    el.classList.add('active');
+                }
+                
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat([point.longitude, point.latitude])
+                    .addTo(state.map);
+                
+                el.addEventListener('click', () => {
+                    setActivePoint(point);
+                    showPopup(point);
+                });
+                
+                state.markers.push(marker);
+                bounds.extend([point.longitude, point.latitude]);
+            });
+            
+            // Fit bounds
+            state.map.fitBounds(bounds, {
+                padding: 50,
+                maxZoom: SPP_CONFIG.mapZoom
+            });
+        }
+        
+        // Popup
+        function showPopup(point) {
+            if (state.popup) state.popup.remove();
+            
+            const html = `
+                <div class="spp-popup">
+                    <div class="spp-popup-header">
+                        <img src="${point.carrierLogo}" alt="" class="spp-popup-logo">
+                        <div class="spp-popup-name">${point.name}</div>
+                    </div>
+                    <div class="spp-popup-address">
+                        ${point.address}<br>
+                        ${point.postalCode} ${point.city}
+                    </div>
+                    <button class="spp-select-btn" onclick="selectPoint(state.points.find(p => p.id === '${point.id}'))">
+                        ${SPP_CONFIG.labels.select_button}
+                    </button>
+                </div>
+            `;
+            
+            state.popup = new mapboxgl.Popup({ closeButton: true, closeOnClick: false })
+                .setLngLat([point.longitude, point.latitude])
+                .setHTML(html)
+                .addTo(state.map);
+        }
+        
+        // Handlers
+        function handlePointClick(pointId) {
+            const point = state.points.find(p => p.id === pointId);
+            if (!point) return;
+            
+            setActivePoint(point);
+            
+            // Center map
+            state.map.flyTo({
+                center: [point.longitude, point.latitude],
+                zoom: 15
+            });
+            
+            showPopup(point);
+        }
+        
+        function setActivePoint(point) {
+            state.activePoint = point;
+            
+            // Update markers
+            state.markers.forEach((marker, i) => {
+                const el = marker.getElement();
+                el.classList.toggle('active', state.filteredPoints[i]?.id === point.id);
+            });
+            
+            // Update list
+            document.querySelectorAll('.spp-point').forEach(el => {
+                el.classList.toggle('active', el.dataset.pointId === point.id);
+            });
+            
+            // Scroll into view
+            const activeEl = document.querySelector(`.spp-point[data-point-id="${point.id}"]`);
+            activeEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        function selectPoint(point) {
+            state.selectedPoint = point;
+            
+            // Update UI
+            renderPoints();
+            updateMap();
+            
+            // Show footer
+            elements.footer.style.display = 'flex';
+            elements.selectedName.textContent = `${point.name} (${point.carrierName})`;
+            
+            // Close popup
+            if (state.popup) state.popup.remove();
+            
+            // Dispatch event for parent
+            window.parent.postMessage({
+                type: 'routz:servicepoint:selected',
+                point: {
+                    id: point.id,
+                    carrier: point.carrier,
+                    name: point.name,
+                    address: point.address,
+                    postalCode: point.postalCode,
+                    city: point.city,
+                    country: point.country,
+                    latitude: point.latitude,
+                    longitude: point.longitude
+                }
+            }, '*');
+        }
+        
+        function confirmSelection() {
+            if (!state.selectedPoint) return;
+            
+            // Dispatch confirm event
+            window.parent.postMessage({
+                type: 'routz:servicepoint:confirmed',
+                point: state.selectedPoint
+            }, '*');
+            
+            // Close modal if in iframe
+            window.parent.postMessage({ type: 'routz:servicepoint:close' }, '*');
+        }
+        
+        // Filters
+        function filterByCarrier(carrier) {
+            state.currentFilter = carrier;
+            
+            // Update buttons
+            document.querySelectorAll('.spp-filter-btn[data-carrier]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.carrier === carrier);
+            });
+            
+            // Filter points
+            if (carrier === 'all') {
+                state.filteredPoints = [...state.points];
+            } else {
+                state.filteredPoints = state.points.filter(p => p.carrier === carrier);
+            }
+            
+            renderPoints();
+            updateMap();
+        }
+        
+        // View
+        function setView(view) {
+            state.currentView = view;
+            
+            // Update buttons
+            document.querySelectorAll('.spp-view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+            
+            // Update layout
+            if (view === 'list') {
+                elements.mapContainer.style.display = 'none';
+                elements.list.classList.add('full-width');
+            } else {
+                elements.mapContainer.style.display = 'block';
+                elements.list.classList.remove('full-width');
+                state.map.resize();
+            }
+        }
+        
+        // Helpers
+        function showLoading(show) {
+            elements.loading.style.display = show ? 'flex' : 'none';
+            elements.pointsList.style.display = show ? 'none' : 'block';
+        }
+        
+        function showNoResults(show) {
+            elements.noResults.style.display = show ? 'block' : 'none';
+            elements.pointsList.style.display = show ? 'none' : 'block';
+        }
+        
+        function formatDistance(distance) {
+            if (!distance) return '';
+            return SPP_CONFIG.labels.distance.replace('{distance}', distance.toFixed(1));
+        }
+        
+        function isOpen(point) {
+            // Simplified - would need proper timezone handling
+            return true;
+        }
+        
+        // Make functions globally available for onclick handlers
+        window.selectPoint = selectPoint;
+        window.handlePointClick = handlePointClick;
+        window.state = state;
+    </script>
+</body>
+</html>

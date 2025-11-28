@@ -1,0 +1,47 @@
+databases:
+  - name: routz-db
+    plan: free
+    databaseName: routz_db
+    user: routz
+
+services:
+  - type: web
+    name: routz-platform
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: routz-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: routz-redis
+          type: redis
+          property: connectionString
+      - key: BASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM_NAME
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+
+  - type: redis
+    name: routz-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru

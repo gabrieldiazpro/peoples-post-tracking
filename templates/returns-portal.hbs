@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{t.portal_title}} - {{brand.name}}</title>
+    <meta name="robots" content="noindex, nofollow">
+    
+    {{#if brand.favicon_url}}
+    <link rel="icon" href="{{brand.favicon_url}}">
+    {{/if}}
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: {{brand.primary_color}};
+            --primary-dark: {{brand.secondary_color}};
+            --accent: {{brand.accent_color}};
+            --bg: {{brand.background_color}};
+            --text: {{brand.text_color}};
+            --radius: {{brand.border_radius}};
+            
+            --white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            
+            --success: #10b981;
+            --success-light: #d1fae5;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --error: #ef4444;
+            --error-light: #fee2e2;
+            --info: #3b82f6;
+            --info-light: #dbeafe;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        /* Layout */
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        /* Header */
+        .header {
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            height: 36px;
+            width: auto;
+        }
+        
+        .brand-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .header-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--gray-600);
+        }
+        
+        /* Main */
+        .main {
+            flex: 1;
+            padding: 40px 24px;
+        }
+        
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        /* Progress Steps */
+        .progress-steps {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 40px;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--gray-200);
+            color: var(--gray-500);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .step.active .step-number {
+            background: var(--primary);
+            color: var(--white);
+        }
+        
+        .step.completed .step-number {
+            background: var(--success);
+            color: var(--white);
+        }
+        
+        .step-label {
+            font-size: 14px;
+            color: var(--gray-500);
+            display: none;
+        }
+        
+        .step.active .step-label {
+            color: var(--gray-800);
+            font-weight: 600;
+        }
+        
+        .step-connector {
+            width: 40px;
+            height: 2px;
+            background: var(--gray-200);
+        }
+        
+        .step.completed + .step-connector,
+        .step.completed ~ .step-connector {
+            background: var(--success);
+        }
+        
+        @media (min-width: 640px) {
+            .step-label { display: block; }
+        }
+        
+        /* Card */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 10px 40px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        
+        .card-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 4px;
+        }
+        
+        .card-subtitle {
+            font-size: 14px;
+            color: var(--gray-500);
+        }
+        
+        .card-body {
+            padding: 24px;
+        }
+        
+        .card-footer {
+            padding: 20px 24px;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-100);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 8px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--gray-800);
+            transition: all 0.2s;
+            background: var(--white);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary)20;
+        }
+        
+        .form-input::placeholder {
+            color: var(--gray-400);
+        }
+        
+        .form-hint {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-top: 6px;
+        }
+        
+        .form-error {
+            color: var(--error);
+            font-size: 13px;
+            margin-top: 6px;
+        }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary:disabled {
+            background: var(--gray-300);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--gray-200);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--gray-200);
+            color: var(--gray-700);
+        }
+        
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-lg {
+            padding: 16px 32px;
+            font-size: 16px;
+        }
+        
+        .btn-full {
+            width: 100%;
+        }
+        
+        /* Order Items */
+        .order-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            background: var(--gray-50);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        
+        .order-item:hover {
+            background: var(--gray-100);
+        }
+        
+        .order-item.selected {
+            background: var(--primary)08;
+            border-color: var(--primary);
+        }
+        
+        .order-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .item-checkbox {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            border: 2px solid var(--gray-300);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        
+        .order-item.selected .item-checkbox {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--white);
+        }
+        
+        .item-image {
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: var(--gray-200);
+            flex-shrink: 0;
+        }
+        
+        .item-details {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .item-name {
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .item-meta {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+        
+        .item-price {
+            font-weight: 600;
+            color: var(--gray-800);
+            text-align: right;
+        }
+        
+        .item-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        
+        .badge-success {
+            background: var(--success-light);
+            color: #059669;
+        }
+        
+        .badge-error {
+            background: var(--error-light);
+            color: #dc2626;
+        }
+        
+        /* Quantity Selector */
+        .quantity-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .qty-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+            background: var(--white);
+            color: var(--gray-600);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .qty-btn:hover {
+            background: var(--gray-100);
+        }
+        
+        .qty-value {
+            width: 40px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        
+        /* Reason Select */
+        .reason-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+        }
+        
+        .reason-option {
+            padding: 14px;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        
+        .reason-option:hover {
+            border-color: var(--gray-300);
+            background: var(--gray-50);
+        }
+        
+        .reason-option.selected {
+            border-color: var(--primary);
+            background: var(--primary)08;
+        }
+        
+        .reason-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .reason-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+        
+        /* Return Methods */
+        .method-option {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 12px;
+        }
+        
+        .method-option:hover {
+            border-color: var(--gray-300);
+        }
+        
+        .method-option.selected {
+            border-color: var(--primary);
+            background: var(--primary)05;
+        }
+        
+        .method-option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .method-radio {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid var(--gray-300);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .method-option.selected .method-radio {
+            border-color: var(--primary);
+        }
+        
+        .method-option.selected .method-radio::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+        
+        .method-icon {
+            font-size: 28px;
+        }
+        
+        .method-details {
+            flex: 1;
+        }
+        
+        .method-name {
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 2px;
+        }
+        
+        .method-desc {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+        
+        .method-price {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        
+        .method-price.free {
+            color: var(--success);
+        }
+        
+        /* Photo Upload */
+        .photo-upload {
+            border: 2px dashed var(--gray-300);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .photo-upload:hover {
+            border-color: var(--primary);
+            background: var(--primary)05;
+        }
+        
+        .photo-upload-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+        
+        .photo-upload-text {
+            color: var(--gray-600);
+            font-size: 14px;
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .photo-preview {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .photo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--error);
+            color: var(--white);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        /* Summary */
+        .summary-card {
+            background: var(--gray-50);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 15px;
+        }
+        
+        .summary-row.total {
+            border-top: 2px solid var(--gray-200);
+            margin-top: 10px;
+            padding-top: 16px;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        
+        .summary-label {
+            color: var(--gray-600);
+        }
+        
+        .summary-value {
+            color: var(--gray-800);
+            font-weight: 600;
+        }
+        
+        .summary-value.positive {
+            color: var(--success);
+        }
+        
+        .summary-value.negative {
+            color: var(--error);
+        }
+        
+        /* Success State */
+        .success-container {
+            text-align: center;
+            padding: 40px 24px;
+        }
+        
+        .success-icon {
+            width: 100px;
+            height: 100px;
+            background: var(--success-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            margin: 0 auto 24px;
+        }
+        
+        .success-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 8px;
+        }
+        
+        .success-rma {
+            font-family: monospace;
+            font-size: 20px;
+            background: var(--gray-100);
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 16px 0;
+            color: var(--primary);
+            font-weight: 700;
+        }
+        
+        .success-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        /* Instructions */
+        .instructions-list {
+            list-style: none;
+            counter-reset: step;
+        }
+        
+        .instruction-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        
+        .instruction-item:last-child {
+            border-bottom: none;
+        }
+        
+        .instruction-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .instruction-text {
+            color: var(--gray-700);
+            padding-top: 4px;
+        }
+        
+        /* QR Code */
+        .qr-container {
+            text-align: center;
+            padding: 24px;
+            background: var(--white);
+            border-radius: 12px;
+            border: 1px solid var(--gray-200);
+        }
+        
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 16px;
+            background: var(--gray-100);
+            border-radius: 8px;
+        }
+        
+        .qr-hint {
+            font-size: 14px;
+            color: var(--gray-500);
+        }
+        
+        /* Footer */
+        .footer {
+            background: var(--white);
+            border-top: 1px solid var(--gray-200);
+            padding: 24px;
+            text-align: center;
+        }
+        
+        .footer-text {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+        
+        .footer-links {
+            margin-top: 12px;
+        }
+        
+        .footer-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 13px;
+            margin: 0 12px;
+        }
+        
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Alerts */
+        .alert {
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        
+        .alert-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .alert-content {
+            flex: 1;
+        }
+        
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .alert-error {
+            background: var(--error-light);
+            color: #991b1b;
+        }
+        
+        .alert-warning {
+            background: var(--warning-light);
+            color: #92400e;
+        }
+        
+        .alert-info {
+            background: var(--info-light);
+            color: #1e40af;
+        }
+        
+        .alert-success {
+            background: var(--success-light);
+            color: #065f46;
+        }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .main {
+                padding: 24px 16px;
+            }
+            
+            .card-header,
+            .card-body,
+            .card-footer {
+                padding: 16px;
+            }
+            
+            .reason-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .photo-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .card-footer {
+                flex-direction: column;
+            }
+            
+            .card-footer .btn {
+                width: 100%;
+            }
+        }
+        
+        /* Custom CSS */
+        {{portalConfig.custom_css}}
+        {{brand.custom_css}}
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                {{#if brand.logo_url}}
+                <img src="{{brand.logo_url}}" alt="{{brand.name}}" class="logo">
+                {{else}}
+                <span class="brand-name">{{brand.name}}</span>
+                {{/if}}
+                <span class="header-title">{{t.portal_title}}</span>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="main">
+            <div class="container">
+                
+                <!-- Progress Steps -->
+                <div class="progress-steps" id="progressSteps">
+                    <div class="step active" data-step="1">
+                        <div class="step-number">1</div>
+                        <span class="step-label">{{t.find_order}}</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" data-step="2">
+                        <div class="step-number">2</div>
+                        <span class="step-label">{{t.select_items}}</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" data-step="3">
+                        <div class="step-number">3</div>
+                        <span class="step-label">{{t.return_method}}</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" data-step="4">
+                        <div class="step-number">4</div>
+                        <span class="step-label">✓</span>
+                    </div>
+                </div>
+                
+                <!-- Step 1: Find Order -->
+                <div class="card" id="step1" data-step="1">
+                    <div class="card-header">
+                        <h2 class="card-title">{{t.find_order}}</h2>
+                        <p class="card-subtitle">{{t.return_deadline}}</p>
+                    </div>
+                    <div class="card-body">
+                        <form id="orderSearchForm">
+                            <div class="form-group">
+                                <label class="form-label" for="orderNumber">{{t.order_number_label}} *</label>
+                                <input type="text" id="orderNumber" name="orderNumber" class="form-input" 
+                                       placeholder="Ex: ORD-123456" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label" for="email">{{t.email_label}} *</label>
+                                <input type="email" id="email" name="email" class="form-input" 
+                                       placeholder="votre@email.com" required>
+                            </div>
+                            
+                            <div id="searchError" class="alert alert-error" style="display: none;">
+                                <span class="alert-icon">⚠️</span>
+                                <div class="alert-content">
+                                    <div class="alert-title">{{t.order_not_found}}</div>
+                                    <div>{{t.order_not_found_desc}}</div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer">
+                        <div></div>
+                        <button type="submit" form="orderSearchForm" class="btn btn-primary btn-lg">
+                            {{t.search_button}} →
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Step 2: Select Items -->
+                <div class="card" id="step2" data-step="2" style="display: none;">
+                    <div class="card-header">
+                        <h2 class="card-title">{{t.select_items}}</h2>
+                        <p class="card-subtitle" id="orderInfo"></p>
+                    </div>
+                    <div class="card-body">
+                        <div id="orderItems"></div>
+                        
+                        <!-- Reason Selection (shown after item selection) -->
+                        <div id="reasonSection" style="display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--gray-200);">
+                            <label class="form-label">{{t.select_reason}}</label>
+                            <div class="reason-grid" id="reasonGrid"></div>
+                        </div>
+                        
+                        <!-- Comments -->
+                        <div id="commentsSection" style="display: none; margin-top: 20px;">
+                            <label class="form-label" for="comments">{{t.comments}}</label>
+                            <textarea id="comments" class="form-input" rows="3" 
+                                      placeholder="{{t.comments_placeholder}}"></textarea>
+                        </div>
+                        
+                        <!-- Photo Upload -->
+                        <div id="photoSection" style="display: none; margin-top: 20px;">
+                            <label class="form-label">{{t.add_photos}}</label>
+                            <div class="photo-upload" id="photoUpload">
+                                <div class="photo-upload-icon">📷</div>
+                                <div class="photo-upload-text">{{t.photo_hint}}</div>
+                            </div>
+                            <input type="file" id="photoInput" accept="image/*" multiple style="display: none;">
+                            <div class="photo-grid" id="photoGrid"></div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-secondary" onclick="goToStep(1)">
+                            ← {{t.back}}
+                        </button>
+                        <button type="button" class="btn btn-primary btn-lg" id="continueToStep3" disabled>
+                            {{t.continue}} →
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Step 3: Return Method & Summary -->
+                <div class="card" id="step3" data-step="3" style="display: none;">
+                    <div class="card-header">
+                        <h2 class="card-title">{{t.return_method}}</h2>
+                    </div>
+                    <div class="card-body">
+                        <!-- Return Methods -->
+                        <div id="returnMethods"></div>
+                        
+                        <!-- Summary -->
+                        <div class="summary-card" style="margin-top: 24px;">
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">{{t.refund_estimate}}</h3>
+                            <div class="summary-row">
+                                <span class="summary-label">{{t.items_to_return}}</span>
+                                <span class="summary-value" id="summaryItems">0 articles</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">{{t.refund_estimate}}</span>
+                                <span class="summary-value" id="summaryOriginal">0,00 €</span>
+                            </div>
+                            <div class="summary-row" id="restockingRow" style="display: none;">
+                                <span class="summary-label">{{t.restocking_fee}}</span>
+                                <span class="summary-value negative" id="summaryRestocking">-0,00 €</span>
+                            </div>
+                            <div class="summary-row" id="shippingRow">
+                                <span class="summary-label">{{t.return_shipping}}</span>
+                                <span class="summary-value" id="summaryShipping">{{t.free}}</span>
+                            </div>
+                            <div class="summary-row total">
+                                <span class="summary-label">{{t.total_refund}}</span>
+                                <span class="summary-value positive" id="summaryTotal">0,00 €</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-secondary" onclick="goToStep(2)">
+                            ← {{t.back}}
+                        </button>
+                        <button type="button" class="btn btn-primary btn-lg" id="submitReturn">
+                            {{t.submit_return}} →
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Step 4: Success -->
+                <div class="card" id="step4" data-step="4" style="display: none;">
+                    <div class="success-container">
+                        <div class="success-icon">✅</div>
+                        <h2 class="success-title">{{t.return_success}}</h2>
+                        <p style="color: var(--gray-600);">{{t.return_success_desc}}</p>
+                        <div class="success-rma" id="rmaNumber">RMA-XXXXXXX</div>
+                        
+                        <!-- QR Code Option -->
+                        <div class="qr-container" id="qrContainer" style="margin: 24px 0;">
+                            <img class="qr-code" id="qrCode" src="" alt="QR Code">
+                            <p class="qr-hint">{{t.qr_code}}</p>
+                        </div>
+                        
+                        <!-- Instructions -->
+                        <div style="text-align: left; margin: 24px 0;">
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">{{t.return_instructions}}</h3>
+                            <ul class="instructions-list">
+                                <li class="instruction-item">
+                                    <div class="instruction-number">1</div>
+                                    <div class="instruction-text">{{t.step_1}}</div>
+                                </li>
+                                <li class="instruction-item">
+                                    <div class="instruction-number">2</div>
+                                    <div class="instruction-text">{{t.step_2}}</div>
+                                </li>
+                                <li class="instruction-item">
+                                    <div class="instruction-number">3</div>
+                                    <div class="instruction-text">{{t.step_3}}</div>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="success-actions">
+                            <a href="#" class="btn btn-primary btn-full" id="downloadLabel">
+                                📄 {{t.download_label}}
+                            </a>
+                            <a href="#" class="btn btn-outline btn-full" id="trackReturn">
+                                📍 {{t.track_return}}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <p class="footer-text">{{brand.name}} • {{t.return_policy}}</p>
+            <div class="footer-links">
+                {{#if brand.support_email}}
+                <a href="mailto:{{brand.support_email}}" class="footer-link">{{t.contact_support}}</a>
+                {{/if}}
+                {{#if portalConfig.terms_url}}
+                <a href="{{portalConfig.terms_url}}" class="footer-link" target="_blank">CGV</a>
+                {{/if}}
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        // Configuration
+        const CONFIG = {
+            orgId: '{{orgId}}',
+            lang: '{{lang}}',
+            apiUrl: '{{apiUrl}}',
+            reasons: {{{json reasons}}},
+            methods: {{{json portalConfig.methods}}},
+            translations: {{{json t}}}
+        };
+        
+        // State
+        let state = {
+            currentStep: 1,
+            order: null,
+            selectedItems: [],
+            selectedReason: null,
+            selectedMethod: 'dropoff',
+            photos: [],
+            refundCalculation: null
+        };
+        
+        // DOM Elements
+        const steps = document.querySelectorAll('.card[data-step]');
+        const progressSteps = document.querySelectorAll('.progress-steps .step');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initOrderSearch();
+            initPhotoUpload();
+            renderReasons();
+            renderMethods();
+        });
+        
+        // Step Navigation
+        function goToStep(step) {
+            state.currentStep = step;
+            
+            // Update progress
+            progressSteps.forEach((ps, i) => {
+                ps.classList.remove('active', 'completed');
+                if (i + 1 < step) ps.classList.add('completed');
+                if (i + 1 === step) ps.classList.add('active');
+            });
+            
+            // Show/hide cards
+            steps.forEach(s => {
+                s.style.display = parseInt(s.dataset.step) === step ? 'block' : 'none';
+            });
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Order Search
+        function initOrderSearch() {
+            document.getElementById('orderSearchForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const orderNumber = document.getElementById('orderNumber').value.trim();
+                const email = document.getElementById('email').value.trim();
+                
+                try {
+                    const response = await fetch(`${CONFIG.apiUrl}/returns/find-order`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            orgId: CONFIG.orgId, 
+                            orderNumber, 
+                            email 
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error('Order not found');
+                    
+                    state.order = await response.json();
+                    document.getElementById('searchError').style.display = 'none';
+                    renderOrderItems();
+                    goToStep(2);
+                    
+                } catch (error) {
+                    document.getElementById('searchError').style.display = 'flex';
+                }
+            });
+        }
+        
+        // Render Order Items
+        function renderOrderItems() {
+            const container = document.getElementById('orderItems');
+            const items = state.order.items || [];
+            
+            document.getElementById('orderInfo').textContent = 
+                `Commande ${state.order.order_number} du ${formatDate(state.order.created_at)}`;
+            
+            container.innerHTML = items.map((item, index) => `
+                <div class="order-item ${!item.eligible ? 'disabled' : ''}" 
+                     data-index="${index}"
+                     onclick="${item.eligible ? `toggleItem(${index})` : ''}">
+                    <div class="item-checkbox">
+                        <span style="display: none;">✓</span>
+                    </div>
+                    ${item.image ? `<img src="${item.image}" class="item-image" alt="">` : 
+                                  `<div class="item-image" style="display: flex; align-items: center; justify-content: center; font-size: 24px;">📦</div>`}
+                    <div class="item-details">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-meta">
+                            ${item.sku ? `SKU: ${item.sku} • ` : ''}
+                            Qté: ${item.quantity}
+                        </div>
+                        ${item.eligible ? 
+                            `<span class="item-badge badge-success">✓ ${CONFIG.translations.eligible_for_return}</span>` :
+                            `<span class="item-badge badge-error">✗ ${CONFIG.translations[item.eligibilityReason] || CONFIG.translations.not_eligible}</span>`
+                        }
+                        ${item.eligible ? `
+                        <div class="quantity-selector" onclick="event.stopPropagation()">
+                            <button class="qty-btn" onclick="changeQty(${index}, -1)">−</button>
+                            <span class="qty-value" id="qty-${index}">1</span>
+                            <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="item-price">${formatPrice(item.price)}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Toggle Item Selection
+        function toggleItem(index) {
+            const itemEl = document.querySelector(`.order-item[data-index="${index}"]`);
+            const isSelected = itemEl.classList.toggle('selected');
+            const checkbox = itemEl.querySelector('.item-checkbox span');
+            checkbox.style.display = isSelected ? 'block' : 'none';
+            
+            updateSelectedItems();
+        }
+        
+        function changeQty(index, delta) {
+            const item = state.order.items[index];
+            const qtyEl = document.getElementById(`qty-${index}`);
+            let qty = parseInt(qtyEl.textContent);
+            qty = Math.max(1, Math.min(item.returnableQuantity || item.quantity, qty + delta));
+            qtyEl.textContent = qty;
+            updateSelectedItems();
+        }
+        
+        function updateSelectedItems() {
+            const selectedEls = document.querySelectorAll('.order-item.selected');
+            state.selectedItems = Array.from(selectedEls).map(el => {
+                const index = parseInt(el.dataset.index);
+                const item = state.order.items[index];
+                const qty = parseInt(document.getElementById(`qty-${index}`).textContent);
+                return { ...item, quantity: qty, orderItemId: item.id };
+            });
+            
+            // Show/hide sections
+            const hasSelection = state.selectedItems.length > 0;
+            document.getElementById('reasonSection').style.display = hasSelection ? 'block' : 'none';
+            document.getElementById('commentsSection').style.display = hasSelection ? 'block' : 'none';
+            document.getElementById('photoSection').style.display = hasSelection ? 'block' : 'none';
+            
+            updateContinueButton();
+        }
+        
+        function updateContinueButton() {
+            const btn = document.getElementById('continueToStep3');
+            btn.disabled = state.selectedItems.length === 0 || !state.selectedReason;
+        }
+        
+        // Reasons
+        function renderReasons() {
+            const container = document.getElementById('reasonGrid');
+            container.innerHTML = CONFIG.reasons.map(reason => `
+                <div class="reason-option" data-code="${reason.code}" onclick="selectReason('${reason.code}')">
+                    <div class="reason-icon">${reason.icon}</div>
+                    <div class="reason-label">${reason.label}</div>
+                </div>
+            `).join('');
+        }
+        
+        function selectReason(code) {
+            document.querySelectorAll('.reason-option').forEach(el => {
+                el.classList.toggle('selected', el.dataset.code === code);
+            });
+            state.selectedReason = code;
+            state.selectedItems = state.selectedItems.map(item => ({ ...item, reasonCode: code }));
+            updateContinueButton();
+        }
+        
+        // Methods
+        function renderMethods() {
+            const container = document.getElementById('returnMethods');
+            const methods = CONFIG.methods;
+            
+            container.innerHTML = Object.entries(methods)
+                .filter(([_, config]) => config.enabled)
+                .map(([key, config]) => `
+                    <div class="method-option ${key === state.selectedMethod ? 'selected' : ''}" 
+                         onclick="selectMethod('${key}')">
+                        <div class="method-radio"></div>
+                        <div class="method-icon">${key === 'dropoff' ? '📍' : key === 'pickup' ? '🚚' : '🏪'}</div>
+                        <div class="method-details">
+                            <div class="method-name">${config.label}</div>
+                            <div class="method-desc">${key === 'dropoff' ? 'Point relais le plus proche' : 
+                                                      key === 'pickup' ? 'Enlèvement à votre adresse' : 
+                                                      'Retourner en magasin'}</div>
+                        </div>
+                        <div class="method-price ${config.price === 0 ? 'free' : ''}">
+                            ${config.price === 0 ? CONFIG.translations.free : formatPrice(config.price)}
+                        </div>
+                    </div>
+                `).join('');
+        }
+        
+        function selectMethod(method) {
+            state.selectedMethod = method;
+            document.querySelectorAll('.method-option').forEach(el => {
+                el.classList.toggle('selected', el.onclick.toString().includes(`'${method}'`));
+            });
+            updateSummary();
+        }
+        
+        // Photo Upload
+        function initPhotoUpload() {
+            const upload = document.getElementById('photoUpload');
+            const input = document.getElementById('photoInput');
+            
+            upload.addEventListener('click', () => input.click());
+            input.addEventListener('change', handlePhotoSelect);
+        }
+        
+        function handlePhotoSelect(e) {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    state.photos.push(e.target.result);
+                    renderPhotos();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        function renderPhotos() {
+            const container = document.getElementById('photoGrid');
+            container.innerHTML = state.photos.map((photo, i) => `
+                <div class="photo-preview">
+                    <img src="${photo}" alt="">
+                    <button class="photo-remove" onclick="removePhoto(${i})">×</button>
+                </div>
+            `).join('');
+        }
+        
+        function removePhoto(index) {
+            state.photos.splice(index, 1);
+            renderPhotos();
+        }
+        
+        // Continue to Step 3
+        document.getElementById('continueToStep3').addEventListener('click', () => {
+            updateSummary();
+            goToStep(3);
+        });
+        
+        // Update Summary
+        function updateSummary() {
+            const items = state.selectedItems;
+            const method = CONFIG.methods[state.selectedMethod];
+            
+            let originalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            let restockingFee = 0;
+            
+            // Check for restocking fee
+            const reason = CONFIG.reasons.find(r => r.code === state.selectedReason);
+            if (reason?.restockingFee) {
+                restockingFee = originalAmount * 0.1; // 10% example
+            }
+            
+            let shippingFee = method?.price || 0;
+            // Free shipping for quality issues
+            if (['DEFECTIVE', 'DAMAGED', 'WRONG_ITEM', 'MISSING_PARTS'].includes(state.selectedReason)) {
+                shippingFee = 0;
+            }
+            
+            const totalRefund = Math.max(0, originalAmount - restockingFee - shippingFee);
+            
+            state.refundCalculation = { originalAmount, restockingFee, shippingFee, totalRefund };
+            
+            // Update UI
+            document.getElementById('summaryItems').textContent = `${items.length} article(s)`;
+            document.getElementById('summaryOriginal').textContent = formatPrice(originalAmount);
+            
+            if (restockingFee > 0) {
+                document.getElementById('restockingRow').style.display = 'flex';
+                document.getElementById('summaryRestocking').textContent = `-${formatPrice(restockingFee)}`;
+            } else {
+                document.getElementById('restockingRow').style.display = 'none';
+            }
+            
+            document.getElementById('summaryShipping').textContent = 
+                shippingFee === 0 ? CONFIG.translations.free : `-${formatPrice(shippingFee)}`;
+            document.getElementById('summaryShipping').className = 
+                'summary-value ' + (shippingFee === 0 ? 'positive' : 'negative');
+            
+            document.getElementById('summaryTotal').textContent = formatPrice(totalRefund);
+        }
+        
+        // Submit Return
+        document.getElementById('submitReturn').addEventListener('click', async () => {
+            const btn = document.getElementById('submitReturn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:20px;height:20px;border-width:2px;"></span>';
+            
+            try {
+                const response = await fetch(`${CONFIG.apiUrl}/returns/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orgId: CONFIG.orgId,
+                        orderId: state.order.id,
+                        orderNumber: state.order.order_number,
+                        customerEmail: state.order.customer_email,
+                        items: state.selectedItems,
+                        returnMethod: state.selectedMethod,
+                        comments: document.getElementById('comments').value,
+                        photos: state.photos
+                    })
+                });
+                
+                const result = await response.json();
+                
+                // Show success
+                document.getElementById('rmaNumber').textContent = result.rma_id;
+                if (result.qrCodeUrl) {
+                    document.getElementById('qrCode').src = result.qrCodeUrl;
+                }
+                if (result.labelUrl) {
+                    document.getElementById('downloadLabel').href = result.labelUrl;
+                }
+                document.getElementById('trackReturn').href = 
+                    `${CONFIG.apiUrl}/returns/track/${result.rma_id}`;
+                
+                goToStep(4);
+                
+            } catch (error) {
+                alert('Une erreur est survenue. Veuillez réessayer.');
+                btn.disabled = false;
+                btn.textContent = CONFIG.translations.submit_return + ' →';
+            }
+        });
+        
+        // Helpers
+        function formatPrice(price) {
+            return new Intl.NumberFormat('{{lang}}', { 
+                style: 'currency', 
+                currency: 'EUR' 
+            }).format(price || 0);
+        }
+        
+        function formatDate(date) {
+            return new Date(date).toLocaleDateString('{{lang}}', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+    </script>
+</body>
+</html>

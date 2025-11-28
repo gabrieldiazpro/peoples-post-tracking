@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="{{lang}}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>{{subject}}</title>
+    
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:AllowPNG/>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    
+    <style>
+        /* Reset */
+        * { margin: 0; padding: 0; }
+        table, td { border-collapse: collapse; }
+        img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        
+        /* Typography */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        body {
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #f4f4f5;
+        }
+        
+        /* Container */
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Responsive */
+        @media screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+            }
+            
+            .mobile-padding {
+                padding-left: 20px !important;
+                padding-right: 20px !important;
+            }
+            
+            .mobile-center {
+                text-align: center !important;
+            }
+            
+            .mobile-stack {
+                display: block !important;
+                width: 100% !important;
+            }
+            
+            .mobile-hide {
+                display: none !important;
+            }
+        }
+        
+        /* Dark Mode */
+        @media (prefers-color-scheme: dark) {
+            body, .email-bg {
+                background-color: #1a1a1a !important;
+            }
+            
+            .email-content {
+                background-color: #2d2d2d !important;
+            }
+            
+            .text-dark {
+                color: #ffffff !important;
+            }
+            
+            .text-gray {
+                color: #a0a0a0 !important;
+            }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5;">
+    <!-- Preheader -->
+    <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
+        {{preheader}}
+        ‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;‌&nbsp;
+    </div>
+    
+    <!-- Email Wrapper -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" class="email-bg" style="background-color: #f4f4f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <!-- Email Container -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="email-container" align="center">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 0 0 30px; text-align: center;">
+                            {{#if brand.email_logo_url}}
+                            <img src="{{brand.email_logo_url}}" alt="{{brand.name}}" width="150" style="max-width: 150px; height: auto;">
+                            {{else if brand.logo_url}}
+                            <img src="{{brand.logo_url}}" alt="{{brand.name}}" width="150" style="max-width: 150px; height: auto;">
+                            {{else}}
+                            <h1 style="font-size: 28px; font-weight: 700; color: {{brand.primary_color}}; margin: 0;">{{brand.name}}</h1>
+                            {{/if}}
+                        </td>
+                    </tr>
+                    
+                    <!-- Main Content Card -->
+                    <tr>
+                        <td>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" class="email-content" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+                                
+                                <!-- Status Banner -->
+                                <tr>
+                                    <td style="background: linear-gradient(135deg, {{brand.primary_color}} 0%, {{brand.secondary_color}} 100%); padding: 40px 30px; text-align: center;">
+                                        <!-- Status Icon -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+                                            <tr>
+                                                <td style="width: 80px; height: 80px; background-color: rgba(255,255,255,0.2); border-radius: 50%; text-align: center; vertical-align: middle; font-size: 36px;">
+                                                    {{statusIcon}}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <h1 style="color: #ffffff; font-size: 24px; font-weight: 700; margin: 20px 0 8px;">
+                                            {{t (concat 'status.' shipment.status) lang}}
+                                        </h1>
+                                        
+                                        {{#if shipment.estimated_delivery}}
+                                        {{#unless isDelivered}}
+                                        <p style="color: rgba(255,255,255,0.9); font-size: 16px; margin: 0;">
+                                            {{t 'estimated_delivery' lang}}: {{estimatedDeliveryFormatted}}
+                                        </p>
+                                        {{/unless}}
+                                        {{/if}}
+                                    </td>
+                                </tr>
+                                
+                                <!-- Progress Bar -->
+                                <tr>
+                                    <td style="padding: 30px 30px 20px;">
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                            <tr>
+                                                <td style="background-color: #e5e7eb; border-radius: 4px; height: 8px;">
+                                                    <div style="width: {{progressPercent}}%; height: 8px; background: linear-gradient(90deg, {{brand.primary_color}}, {{brand.accent_color}}); border-radius: 4px;"></div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Progress Steps -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 12px;">
+                                            <tr>
+                                                <td style="font-size: 11px; color: {{#if (gt progressPercent 10)}}{{brand.primary_color}}{{else}}#9ca3af{{/if}}; text-align: left;">📦</td>
+                                                <td style="font-size: 11px; color: {{#if (gt progressPercent 30)}}{{brand.primary_color}}{{else}}#9ca3af{{/if}}; text-align: center;">🚚</td>
+                                                <td style="font-size: 11px; color: {{#if (gt progressPercent 50)}}{{brand.primary_color}}{{else}}#9ca3af{{/if}}; text-align: center;">🚛</td>
+                                                <td style="font-size: 11px; color: {{#if (gt progressPercent 80)}}{{brand.primary_color}}{{else}}#9ca3af{{/if}}; text-align: center;">🛵</td>
+                                                <td style="font-size: 11px; color: {{#if (eq progressPercent 100)}}#10b981{{else}}#9ca3af{{/if}}; text-align: right;">✅</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Shipment Info -->
+                                <tr>
+                                    <td style="padding: 0 30px 30px;">
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f9fafb; border-radius: 12px;">
+                                            <tr>
+                                                <td style="padding: 20px;">
+                                                    <!-- Tracking Number -->
+                                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 16px;">
+                                                        <tr>
+                                                            <td>
+                                                                <p style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px;">{{t 'tracking_number' lang}}</p>
+                                                                <p style="font-size: 16px; font-weight: 600; color: #111827; margin: 0; font-family: 'SF Mono', 'Fira Code', monospace;">{{shipment.tracking_number}}</p>
+                                                            </td>
+                                                            <td style="text-align: right;">
+                                                                {{#if brand.show_carrier_logo}}
+                                                                <img src="{{carrierLogo}}" alt="{{carrierName}}" height="30" style="height: 30px; width: auto;">
+                                                                {{else}}
+                                                                <span style="font-size: 14px; color: #6b7280;">{{carrierName}}</span>
+                                                                {{/if}}
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                    
+                                                    {{#if order}}
+                                                    <!-- Order Number -->
+                                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                        <tr>
+                                                            <td>
+                                                                <p style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px;">{{t 'order_number' lang}}</p>
+                                                                <p style="font-size: 16px; font-weight: 600; color: #111827; margin: 0;">{{order.order_number}}</p>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                    {{/if}}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Delivery Address -->
+                                <tr>
+                                    <td style="padding: 0 30px 30px;">
+                                        <p style="font-size: 14px; font-weight: 600; color: #111827; margin: 0 0 12px; border-left: 3px solid {{brand.primary_color}}; padding-left: 12px;">
+                                            {{t 'delivery_address' lang}}
+                                        </p>
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f9fafb; border-radius: 12px;">
+                                            <tr>
+                                                <td style="padding: 16px 20px;">
+                                                    <p style="font-size: 15px; color: #374151; margin: 0; line-height: 1.6;">
+                                                        <strong>{{shipment.recipient_name}}</strong><br>
+                                                        {{#if shipment.recipient_company}}{{shipment.recipient_company}}<br>{{/if}}
+                                                        {{shipment.recipient_address1}}<br>
+                                                        {{#if shipment.recipient_address2}}{{shipment.recipient_address2}}<br>{{/if}}
+                                                        {{shipment.recipient_postal_code}} {{shipment.recipient_city}}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                
+                                <!-- CTA Button -->
+                                <tr>
+                                    <td style="padding: 0 30px 30px; text-align: center;">
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+                                            <tr>
+                                                <td style="background-color: {{brand.primary_color}}; border-radius: 8px;">
+                                                    <a href="{{trackingUrl}}" target="_blank" style="display: inline-block; padding: 16px 32px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                                                        📍 {{t 'cta_track' lang}}
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Products (if enabled) -->
+                                {{#if brand.show_products}}
+                                {{#if order.order_items}}
+                                <tr>
+                                    <td style="padding: 0 30px 30px;">
+                                        <p style="font-size: 14px; font-weight: 600; color: #111827; margin: 0 0 16px; border-left: 3px solid {{brand.primary_color}}; padding-left: 12px;">
+                                            {{t 'products_ordered' lang}}
+                                        </p>
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                            {{#each order.order_items}}
+                                            <tr>
+                                                <td style="padding: 12px; background-color: #f9fafb; border-radius: 8px; margin-bottom: 8px;">
+                                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                        <tr>
+                                                            {{#if this.image}}
+                                                            <td style="width: 50px; vertical-align: top;">
+                                                                <img src="{{this.image}}" alt="" width="50" height="50" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;">
+                                                            </td>
+                                                            {{/if}}
+                                                            <td style="padding-left: {{#if this.image}}12px{{else}}0{{/if}}; vertical-align: top;">
+                                                                <p style="font-size: 14px; font-weight: 600; color: #111827; margin: 0;">{{this.name}}</p>
+                                                                <p style="font-size: 13px; color: #6b7280; margin: 4px 0 0;">Qté: {{this.quantity}}</p>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            {{#unless @last}}
+                                            <tr><td style="height: 8px;"></td></tr>
+                                            {{/unless}}
+                                            {{/each}}
+                                        </table>
+                                    </td>
+                                </tr>
+                                {{/if}}
+                                {{/if}}
+                                
+                                <!-- Promo Banner (if enabled) -->
+                                {{#if brand.show_promo_banner}}
+                                <tr>
+                                    <td style="padding: 0 30px 30px;">
+                                        <a href="{{brand.promo_banner_url}}" target="_blank" style="display: block; text-decoration: none;">
+                                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, {{brand.accent_color}} 0%, {{brand.primary_color}} 100%); border-radius: 12px;">
+                                                <tr>
+                                                    {{#if brand.promo_banner_image}}
+                                                    <td style="width: 80px; padding: 16px;">
+                                                        <img src="{{brand.promo_banner_image}}" alt="" width="60" style="width: 60px; height: auto; border-radius: 8px;">
+                                                    </td>
+                                                    {{/if}}
+                                                    <td style="padding: 16px;">
+                                                        <p style="font-size: 16px; font-weight: 700; color: #ffffff; margin: 0;">{{t 'promo_title' lang}}</p>
+                                                        <p style="font-size: 14px; color: rgba(255,255,255,0.9); margin: 4px 0 0;">{{brand.promo_banner_text}}</p>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {{/if}}
+                                
+                                <!-- Help Section -->
+                                <tr>
+                                    <td style="padding: 0 30px 30px;">
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                                            <tr>
+                                                <td style="text-align: center;">
+                                                    <p style="font-size: 14px; color: #6b7280; margin: 0 0 12px;">{{t 'need_help' lang}}</p>
+                                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+                                                        <tr>
+                                                            {{#if brand.support_url}}
+                                                            <td style="padding: 0 8px;">
+                                                                <a href="{{brand.support_url}}" target="_blank" style="display: inline-block; padding: 10px 20px; font-size: 14px; font-weight: 500; color: {{brand.primary_color}}; text-decoration: none; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                                                    💬 {{t 'contact_us' lang}}
+                                                                </a>
+                                                            </td>
+                                                            {{/if}}
+                                                            <td style="padding: 0 8px;">
+                                                                <a href="{{returnUrl}}" target="_blank" style="display: inline-block; padding: 10px 20px; font-size: 14px; font-weight: 500; color: #6b7280; text-decoration: none; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                                                    ↩️ {{t 'return_package' lang}}
+                                                                </a>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px; text-align: center;">
+                            <!-- Social Links -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-bottom: 20px;">
+                                <tr>
+                                    {{#if brand.instagram_url}}
+                                    <td style="padding: 0 8px;">
+                                        <a href="{{brand.instagram_url}}" target="_blank" style="display: inline-block; width: 36px; height: 36px; background-color: #e5e7eb; border-radius: 50%; text-align: center; line-height: 36px; text-decoration: none;">
+                                            📷
+                                        </a>
+                                    </td>
+                                    {{/if}}
+                                    {{#if brand.facebook_url}}
+                                    <td style="padding: 0 8px;">
+                                        <a href="{{brand.facebook_url}}" target="_blank" style="display: inline-block; width: 36px; height: 36px; background-color: #e5e7eb; border-radius: 50%; text-align: center; line-height: 36px; text-decoration: none;">
+                                            👤
+                                        </a>
+                                    </td>
+                                    {{/if}}
+                                    {{#if brand.twitter_url}}
+                                    <td style="padding: 0 8px;">
+                                        <a href="{{brand.twitter_url}}" target="_blank" style="display: inline-block; width: 36px; height: 36px; background-color: #e5e7eb; border-radius: 50%; text-align: center; line-height: 36px; text-decoration: none;">
+                                            🐦
+                                        </a>
+                                    </td>
+                                    {{/if}}
+                                </tr>
+                            </table>
+                            
+                            <p style="font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 4px;">{{brand.name}}</p>
+                            
+                            {{#if brand.email_footer_text}}
+                            <p style="font-size: 13px; color: #6b7280; margin: 0 0 12px;">{{brand.email_footer_text}}</p>
+                            {{/if}}
+                            
+                            <p style="font-size: 13px; color: #9ca3af; margin: 0;">
+                                {{t 'footer_text' lang}}
+                            </p>
+                            
+                            {{#if brand.support_email}}
+                            <p style="font-size: 13px; color: #9ca3af; margin: 8px 0 0;">
+                                <a href="mailto:{{brand.support_email}}" style="color: {{brand.primary_color}}; text-decoration: none;">{{brand.support_email}}</a>
+                            </p>
+                            {{/if}}
+                            
+                            <p style="font-size: 11px; color: #d1d5db; margin: 20px 0 0;">
+                                Suivi propulsé par <a href="https://routz.io" style="color: #9ca3af; text-decoration: none;">Routz</a>
+                            </p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
